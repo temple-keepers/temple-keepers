@@ -87,9 +87,9 @@ const Community = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-20 lg:pb-8">
+    <div className="pb-20 lg:pb-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 max-w-2xl">  
         <div>
           <h1 className={`text-3xl font-display font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Community
@@ -314,7 +314,7 @@ const FeedTab = ({ posts, user, userProfile, isDark, toast, onRefresh }) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-2xl">
       {posts.length === 0 ? (
         <div className={`text-center py-12 rounded-2xl ${isDark ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
           <MessageCircle className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} />
