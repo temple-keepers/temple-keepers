@@ -611,8 +611,14 @@ const CreatePostModal = ({ user, isDark, toast, onClose, onCreated }) => {
       setType('update')
       
       toast.success('Posted! 🎉')
-      onCreated()
+      
+      // Close modal first
       onClose()
+      
+      // Then refresh data after a brief delay to ensure DB consistency
+      setTimeout(() => {
+        onCreated()
+      }, 300)
     } catch (error) {
       console.error('Post error:', error)
       toast.error(error.message || 'Failed to post')

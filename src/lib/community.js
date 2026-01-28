@@ -18,21 +18,40 @@ export const getFeedPosts = async (limit = 20, offset = 0) => {
     return []
   }
   
-  if (!posts || posts.length === 0) return []
+  if (!posts || posts.length === 0) {
+    console.log('No posts found')
+    return []
+  }
+  
+  console.log(`Fetched ${posts.length} posts`)
   
   // Fetch profiles for all user_ids
   const userIds = [...new Set(posts.map(p => p.user_id))]
-  const { data: profiles } = await supabase
+  console.log('Fetching profiles for users:', userIds)
+  
+  const { data: profiles, error: profileError } = await supabase
     .from('profiles')
     .select('id, full_name, avatar_url, community_visible')
     .in('id', userIds)
   
+  if (profileError) {
+    console.error('Error fetching profiles:', profileError)
+    // Return posts without profiles rather than failing completely
+    return posts.map(post => ({ ...post, profile: null }))
+  }
+  
+  console.log(`Fetched ${profiles?.length || 0} profiles`)
+  
   // Attach profiles to posts
   const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
-  return posts.map(post => ({
+  const postsWithProfiles = posts.map(post => ({
     ...post,
     profile: profileMap.get(post.user_id)
   }))
+  
+  console.log('Posts with profiles:', postsWithProfiles.length)
+  return postsWithProfiles
+}
 }
 
 export const createPost = async (userId, type, content, isAnonymous = false, imageUrl = null) => {
