@@ -104,7 +104,7 @@ const AdminRecipes = () => {
                     <td className="px-6 py-4">
                       <p className="text-white font-medium truncate max-w-[200px]">{recipe.title}</p>
                     </td>
-                    <td className="px-6 py-4 text-gray-300 text-sm">{recipe.profiles?.full_name || 'Unknown'}</td>
+                    <td className="px-6 py-4 text-gray-300 text-sm">{recipe.author_name || 'Anonymous'}</td>
                     <td className="px-6 py-4 text-gray-300 text-sm">{new Date(recipe.created_at).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">
                       <button onClick={() => setSelectedRecipe(recipe)} className="p-2 rounded-lg hover:bg-gray-600 text-gray-400 hover:text-white"><Eye className="w-5 h-5" /></button>

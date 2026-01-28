@@ -117,35 +117,155 @@ export const getAdminStats = async () => {
 export const getAllUsers = async (page = 1, limit = 20, search = '') => {
   console.log('🔍 getAllUsers called:', { page, limit, search })
   
-  let query = supabase
-    .from('profiles')
-    .select(`*`, { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+  try {
+    // First get profiles
+    let query = supabase
+      .from('profiles')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
 
-  if (search) {
-    query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
-  }
+    if (search) {
+      query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
+    }
 
-  const { data, error, count } = await query
-  
-  console.log('📊 getAllUsers result:', { data, error, count })
-  
-  if (error) {
-    console.error('❌ getAllUsers error:', error)
+    const { data: profiles, error: profilesError, count } = await query
+    
+    if (profilesError) {
+      console.error('❌ Error fetching profiles:', profilesError)
+      return { users: [], total: 0 }
+    }
+    
+    if (!profiles || profiles.length === 0) {
+      return { users: [], total: count || 0 }
+    }
+    
+    // Get user IDs for batch fetching related data
+    const userIds = profiles.map(p => p.id)
+    
+    // Fetch user_stats for all users
+    const { data: allStats } = await supabase
+      .from('user_stats')
+      .select('user_id, streak_days, total_points, recipes_saved, devotionals_completed')
+      .in('user_id', userIds)
+    
+    // Fetch subscriptions for all users
+    const { data: allSubscriptions } = await supabase
+      .from('subscriptions')
+      .select('user_id, plan_name, status, current_period_end')
+      .in('user_id', userIds)
+    
+    // Create lookup maps
+    const statsMap = new Map(allStats?.map(s => [s.user_id, s]) || [])
+    const subsMap = new Map(allSubscriptions?.map(s => [s.user_id, s]) || [])
+    
+    // Combine data
+    const users = profiles.map(profile => ({
+      ...profile,
+      user_stats: statsMap.get(profile.id) || null,
+      subscriptions: subsMap.get(profile.id) || null
+    }))
+    
+    console.log('📊 getAllUsers result:', { users: users.length, count })
+    
+    return { users, total: count || 0 }
+  } catch (err) {
+    console.error('❌ getAllUsers exception:', err)
     return { users: [], total: 0 }
   }
-  
-  return { users: data || [], total: count || 0 }
 }
 
 export const getUserDetails = async (userId) => {
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single()
-  const { data: stats } = await supabase.from('user_stats').select('*').eq('user_id', userId).single()
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+  const { data: stats } = await supabase.from('user_stats').select('*').eq('user_id', userId).maybeSingle()
+  const { data: subscription } = await supabase.from('subscriptions').select('*').eq('user_id', userId).maybeSingle()
   const { data: recipes } = await supabase.from('recipes').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(10)
   const { data: devotionals } = await supabase.from('devotional_completions').select('*').eq('user_id', userId).order('completed_at', { ascending: false }).limit(10)
 
-  return { profile, stats, recipes: recipes || [], devotionals: devotionals || [] }
+  return { profile, stats, subscription, recipes: recipes || [], devotionals: devotionals || [] }
+}
+
+// Update user subscription (superAdmin only)
+export const updateUserSubscription = async (userId, planName, status) => {
+  console.log('📝 Updating subscription for user:', userId, planName, status)
+  
+  // Map plan names to plan IDs
+  const planIdMap = {
+    'free': 'free',
+    'basic': 'basic_monthly',
+    'premium': 'premium_monthly'
+  }
+  
+  try {
+    // First check if subscription exists
+    const { data: existing } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    let result
+    
+    if (existing) {
+      // Update existing subscription
+      result = await supabase
+        .from('subscriptions')
+        .update({
+          plan_id: planIdMap[planName] || planName,
+          plan_name: planName,
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .select()
+        .single()
+    } else {
+      // Insert new subscription
+      result = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: userId,
+          plan_id: planIdMap[planName] || planName,
+          plan_name: planName,
+          status,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+    }
+    
+    if (result.error) {
+      console.error('❌ Error updating subscription:', result.error)
+      return { success: false, error: result.error }
+    }
+    
+    console.log('✅ Subscription updated:', result.data)
+    return { success: true, data: result.data }
+  } catch (err) {
+    console.error('❌ Exception updating subscription:', err)
+    return { success: false, error: err }
+  }
+}
+
+// Delete user (superAdmin only)
+export const deleteUser = async (userId) => {
+  // First delete related data
+  await supabase.from('user_stats').delete().eq('user_id', userId)
+  await supabase.from('subscriptions').delete().eq('user_id', userId)
+  await supabase.from('devotional_progress').delete().eq('user_id', userId)
+  await supabase.from('water_logs').delete().eq('user_id', userId)
+  await supabase.from('meal_plans').delete().eq('user_id', userId)
+  await supabase.from('recipe_usage').delete().eq('user_id', userId)
+  
+  // Delete profile (cascade should handle auth.users)
+  const { error } = await supabase.from('profiles').delete().eq('id', userId)
+  
+  if (error) {
+    console.error('❌ Error deleting user:', error)
+    return { success: false, error }
+  }
+  return { success: true }
 }
 
 // ============================================

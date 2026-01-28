@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   health_goals TEXT[] DEFAULT '{}',
   dietary_preferences TEXT[] DEFAULT '{}',
   notification_preferences JSONB DEFAULT '{"daily_devotional": true, "weekly_summary": true, "recipe_suggestions": true}',
+  onboarding_completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

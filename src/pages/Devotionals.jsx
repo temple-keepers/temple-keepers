@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { generateDevotional } from '../lib/gemini'
 import { saveDevotionalCompletion, incrementUserStat } from '../lib/supabase'
+import { useToast } from '../contexts/ToastContext'
+
 import { 
   BookOpen, 
   Heart, 
@@ -27,6 +29,7 @@ const Devotionals = () => {
   const [completing, setCompleting] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [selectedTheme, setSelectedTheme] = useState('general')
+  const { toast } = useToast()
 
   const themes = [
     { id: 'general', label: 'General Wellness', icon: Heart },
@@ -58,7 +61,38 @@ Remember, caring for your temple isn't about perfection—it's about intention. 
 
   const loadDevotional = async () => {
     setLoading(true)
-    setTodayDevotional(fallbackDevotional)
+    
+    // Check if we have today's devotional cached
+    const today = new Date().toDateString()
+    const cachedDate = localStorage.getItem('devotional_date')
+    const cachedDevotional = localStorage.getItem('devotional_content')
+    
+    if (cachedDate === today && cachedDevotional) {
+      try {
+        setTodayDevotional(JSON.parse(cachedDevotional))
+        setLoading(false)
+        return
+      } catch (e) {
+        console.warn('Failed to parse cached devotional')
+      }
+    }
+    
+    // Generate a new devotional for today
+    try {
+      const result = await generateDevotional('general wellness')
+      if (result.devotional) {
+        setTodayDevotional(result.devotional)
+        // Cache for today
+        localStorage.setItem('devotional_date', today)
+        localStorage.setItem('devotional_content', JSON.stringify(result.devotional))
+      } else {
+        setTodayDevotional(fallbackDevotional)
+      }
+    } catch (error) {
+      console.error('Failed to generate daily devotional:', error)
+      setTodayDevotional(fallbackDevotional)
+    }
+    
     setLoading(false)
   }
 
@@ -80,16 +114,9 @@ Remember, caring for your temple isn't about perfection—it's about intention. 
     }
     setGenerating(false)
   }
+  
 
   const markComplete = async () => {
-    console.log('🔵 Mark Complete button clicked')
-    
-    if (!user) {
-      console.error('❌ No user found')
-      alert('You must be logged in')
-      return
-    }
-    
     if (!todayDevotional) {
       console.error('❌ No devotional loaded')
       return

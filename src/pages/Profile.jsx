@@ -3,6 +3,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { updateProfile } from '../lib/supabase'
 import CookieSettingsButton from '../components/CookieSettingsButton'
+import { useToast } from '../contexts/ToastContext'
+import { useSubscription } from '../contexts/SubscriptionContext'
+import { Crown, CreditCard, ExternalLink } from 'lucide-react'
+
 import { 
   User, 
   Mail, 
@@ -59,6 +63,8 @@ const Profile = () => {
     'Kosher'
   ]
 
+  const { toast } = useToast()
+
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -107,12 +113,6 @@ const Profile = () => {
   }
 
   const handleSave = async () => {
-    if (!user) {
-      console.error('No user found')
-      alert('You must be logged in to save changes.')
-      return
-    }
-
     setSaving(true)
     setSaved(false)
     
@@ -143,13 +143,22 @@ const Profile = () => {
       setSaving(false)
     }
   }
+  const { subscription, getCurrentPlan, isPaid } = useSubscription()
+const currentPlan = getCurrentPlan()
 
-  <div className="mt-8">
-  <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-    Privacy & Settings
-  </h3>
-  <CookieSettingsButton />
-</div>
+const handleManageBilling = async () => {
+  if (!subscription?.stripe_customer_id) return
+  
+  try {
+    const { data, error } = await supabase.functions.invoke('create-portal-session', {
+      body: { customerId: subscription.stripe_customer_id }
+    })
+    if (error) throw error
+    window.location.href = data.url
+  } catch (error) {
+    toast.error('Failed to open billing portal')
+  }
+}
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 lg:pb-8">
@@ -327,6 +336,56 @@ const Profile = () => {
           ))}
         </div>
       </div>
+
+      <div className={`rounded-2xl p-6 ${isDark ? 'bg-gray-800' : 'bg-white shadow-sm'}`}>
+  <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${
+    isDark ? 'text-white' : 'text-gray-900'
+  }`}>
+    <Crown className="w-5 h-5 text-temple-gold" />
+    Subscription
+  </h3>
+  
+  <div className="flex items-center justify-between mb-4">
+    <div>
+      <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
+        {currentPlan.name} Plan
+      </p>
+      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        {isPaid() ? `£${currentPlan.monthlyPrice}/month` : 'Free forever'}
+      </p>
+    </div>
+    <div className={`px-3 py-1 rounded-full text-sm ${
+      isPaid() 
+        ? 'bg-green-500/20 text-green-500' 
+        : 'bg-gray-500/20 text-gray-500'
+    }`}>
+      {subscription?.status || 'active'}
+    </div>
+  </div>
+
+  <div className="flex gap-3">
+    {isPaid() ? (
+      <button
+        onClick={handleManageBilling}
+        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 ${
+          isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700'
+        }`}
+      >
+        <CreditCard className="w-5 h-5" />
+        Manage Billing
+        <ExternalLink className="w-4 h-4" />
+      </button>
+    ) : (
+      <Link
+        to="/pricing"
+        className="flex-1 py-3 rounded-xl bg-gradient-to-r from-temple-purple to-temple-gold text-white font-medium flex items-center justify-center gap-2"
+      >
+        <Crown className="w-5 h-5" />
+        Upgrade Plan
+      </Link>
+    )}
+  </div>
+</div>
 
       {/* Save Button */}
       <div className="flex justify-end animate-fade-in" style={{ animationDelay: '0.5s' }}>

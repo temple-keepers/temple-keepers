@@ -296,7 +296,7 @@ export const incrementUserStat = async (userId, statField, pointsToAdd = 0) => {
 // RECIPE LIBRARY FUNCTIONS
 // ============================================
 
-export const publishRecipe = async (userId, recipe) => {
+export const publishRecipe = async (userId, recipe, isAIGenerated = true) => {
   console.log('📤 Publishing recipe to library')
   
   const recipeData = {
@@ -316,7 +316,8 @@ export const publishRecipe = async (userId, recipe) => {
     cuisine: recipe.cuisine || '',
     meal_type: recipe.mealType || recipe.meal_type || '',
     dietary_tags: recipe.dietaryTags || recipe.dietary_tags || [],
-    status: 'pending' // Will need approval
+    // Auto-approve AI-generated recipes, pending for user-submitted
+    status: isAIGenerated ? 'approved' : 'pending'
   }
 
   const { data, error } = await supabase
@@ -340,18 +341,15 @@ export const getRecipeLibrary = async (sortBy = 'recent') => {
   try {
     let query = supabase
       .from('recipes')
-      .select(`
-        *,
-        recipe_ratings(rating)
-      `)
+      .select('*')
       .eq('status', 'approved')
 
     switch (sortBy) {
       case 'popular':
-        query = query.order('save_count', { ascending: false })
+        query = query.order('save_count', { ascending: false, nullsFirst: false })
         break
       case 'topRated':
-        query = query.order('view_count', { ascending: false })
+        query = query.order('view_count', { ascending: false, nullsFirst: false })
         break
       default: // recent
         query = query.order('created_at', { ascending: false })
@@ -368,20 +366,19 @@ export const getRecipeLibrary = async (sortBy = 'recent') => {
 
     console.log('✅ Fetched recipes:', data?.length || 0)
 
-    // Calculate average rating for each recipe
+    // Return recipes with default ratings
     const recipes = (data || []).map(recipe => ({
       ...recipe,
       author_name: recipe.author_name || 'Anonymous',
-      average_rating: recipe.recipe_ratings?.length 
-        ? (recipe.recipe_ratings.reduce((sum, r) => sum + r.rating, 0) / recipe.recipe_ratings.length).toFixed(1)
-        : 0,
-      rating_count: recipe.recipe_ratings?.length || 0
+      average_rating: 0,
+      rating_count: 0
     }))
     
     return recipes
   } catch (err) {
     console.error('❌ Exception in getRecipeLibrary:', err)
-    throw err
+    // Return empty array instead of throwing to prevent UI crash
+    return []
   }
 }
 
@@ -531,7 +528,15 @@ export const getUserPublishedRecipes = async (userId) => {
 // WATER TRACKER FUNCTIONS
 // ============================================
 
-export const getWaterLog = async (userId, date = new Date().toISOString().split('T')[0]) => {
+// Helper to get local date string (YYYY-MM-DD)
+const getLocalDateString = (date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export const getWaterLog = async (userId, date = getLocalDateString()) => {
   const { data, error } = await supabase
     .from('water_logs')
     .select('*')
@@ -546,7 +551,7 @@ export const getWaterLog = async (userId, date = new Date().toISOString().split(
 }
 
 export const updateWaterLog = async (userId, glasses, goal = 8) => {
-  const date = new Date().toISOString().split('T')[0]
+  const date = getLocalDateString()
   
   const { data, error } = await supabase
     .from('water_logs')
@@ -575,7 +580,7 @@ export const getWaterHistory = async (userId, days = 7) => {
     .from('water_logs')
     .select('*')
     .eq('user_id', userId)
-    .gte('date', startDate.toISOString().split('T')[0])
+    .gte('date', getLocalDateString(startDate))
     .order('date', { ascending: false })
 
   if (error) {
@@ -590,76 +595,88 @@ export const getWaterHistory = async (userId, days = 7) => {
 // ============================================
 
 export const getMealPlan = async (userId, startDate, endDate) => {
-  const { data, error } = await supabase
+  // Get the meal plan entries
+  const { data: mealData, error: mealError } = await supabase
     .from('meal_plans')
-    .select(`
-      *,
-      recipe:recipe_id (
-        id,
-        title,
-        description,
-        prep_time,
-        cook_time,
-        servings,
-        ingredients
-      ),
-      saved_recipe:saved_recipe_id (
-        id,
-        title,
-        description,
-        prep_time,
-        cook_time,
-        servings,
-        ingredients
-      )
-    `)
+    .select('*')
     .eq('user_id', userId)
     .gte('date', startDate)
     .lte('date', endDate)
     .order('date', { ascending: true })
 
-  if (error) {
-    console.error('Error fetching meal plan:', error)
+  if (mealError) {
+    console.error('Error fetching meal plan:', mealError)
     return []
   }
-  
-  // Normalize the data - merge recipe from either source
-  return (data || []).map(meal => ({
-    ...meal,
-    recipe: meal.recipe || meal.saved_recipe
-  }))
+
+  if (!mealData || mealData.length === 0) {
+    return []
+  }
+
+  // Get unique library recipe IDs
+  const libraryRecipeIds = [...new Set(mealData.filter(m => m.recipe_id).map(m => m.recipe_id))]
+
+  // Fetch library recipes if any
+  let libraryRecipes = {}
+  if (libraryRecipeIds.length > 0) {
+    const { data: libData } = await supabase
+      .from('recipes')
+      .select('id, title, description, prep_time, cook_time, servings, ingredients')
+      .in('id', libraryRecipeIds)
+    
+    if (libData) {
+      libData.forEach(r => { libraryRecipes[r.id] = r })
+    }
+  }
+
+  // Merge recipe data into meal plan
+  return mealData.map(meal => {
+    let recipe = null
+    
+    if (meal.recipe_id && libraryRecipes[meal.recipe_id]) {
+      recipe = libraryRecipes[meal.recipe_id]
+    } else if (meal.custom_meal) {
+      // Try to parse custom_meal as JSON (for saved recipes stored as custom meal)
+      try {
+        recipe = JSON.parse(meal.custom_meal)
+      } catch {
+        recipe = { title: meal.custom_meal }
+      }
+    }
+    
+    return { ...meal, recipe }
+  })
 }
 
-export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSource = 'saved') => {
-  // Determine which column to use based on the source
-  const insertData = {
+export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSource = 'saved', recipeData = null) => {
+  let insertData = {
     user_id: userId,
     date,
     meal_type: mealType,
-    recipe_id: recipeSource === 'library' ? recipeId : null,
-    saved_recipe_id: recipeSource === 'saved' ? recipeId : null
+    recipe_id: null,
+    custom_meal: null
+  }
+
+  if (recipeSource === 'library') {
+    // Use recipe_id for library recipes
+    insertData.recipe_id = recipeId
+  } else if (recipeSource === 'saved' && recipeData) {
+    // Store saved recipe data as JSON in custom_meal
+    insertData.custom_meal = JSON.stringify({
+      id: recipeData.id,
+      title: recipeData.title,
+      description: recipeData.description,
+      prep_time: recipeData.prep_time,
+      cook_time: recipeData.cook_time,
+      ingredients: recipeData.ingredients
+    })
   }
   
+  // Insert/update the meal plan entry
   const { data, error } = await supabase
     .from('meal_plans')
     .upsert(insertData, { onConflict: 'user_id,date,meal_type' })
-    .select(`
-      *,
-      recipe:recipe_id (
-        id,
-        title,
-        description,
-        prep_time,
-        cook_time
-      ),
-      saved_recipe:saved_recipe_id (
-        id,
-        title,
-        description,
-        prep_time,
-        cook_time
-      )
-    `)
+    .select('*')
     .single()
 
   if (error) {
@@ -667,11 +684,24 @@ export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSour
     throw error
   }
   
-  // Return normalized data
-  return {
-    ...data,
-    recipe: data.recipe || data.saved_recipe
+  // Return with recipe data
+  let recipe = null
+  if (insertData.recipe_id) {
+    const { data: recipeResult } = await supabase
+      .from('recipes')
+      .select('id, title, description, prep_time, cook_time')
+      .eq('id', insertData.recipe_id)
+      .single()
+    recipe = recipeResult
+  } else if (insertData.custom_meal) {
+    try {
+      recipe = JSON.parse(insertData.custom_meal)
+    } catch {
+      recipe = { title: insertData.custom_meal }
+    }
   }
+
+  return { ...data, recipe }
 }
 
 export const removeMealFromPlan = async (mealPlanId) => {
@@ -688,27 +718,107 @@ export const removeMealFromPlan = async (mealPlanId) => {
 }
 
 export const getShoppingList = async (userId, startDate, endDate) => {
-  const { data, error } = await supabase
+  // Get the meal plan entries
+  const { data: mealData, error: mealError } = await supabase
     .from('meal_plans')
-    .select(`
-      recipe:recipe_id (
-        ingredients
-      )
-    `)
+    .select('recipe_id, custom_meal')
     .eq('user_id', userId)
     .gte('date', startDate)
     .lte('date', endDate)
-    .not('recipe_id', 'is', null)
 
-  if (error) {
-    console.error('Error fetching shopping list:', error)
+  if (mealError) {
+    console.error('Error fetching shopping list:', mealError)
     return []
   }
 
-  // Flatten all ingredients
-  const allIngredients = data
-    ?.flatMap(m => m.recipe?.ingredients || [])
-    .filter(Boolean) || []
+  if (!mealData || mealData.length === 0) {
+    return []
+  }
 
-  return allIngredients
+  // Get unique library recipe IDs
+  const libraryRecipeIds = [...new Set(mealData.filter(m => m.recipe_id).map(m => m.recipe_id))]
+
+  let allIngredients = []
+
+  // Fetch library recipe ingredients
+  if (libraryRecipeIds.length > 0) {
+    const { data: libData } = await supabase
+      .from('recipes')
+      .select('ingredients')
+      .in('id', libraryRecipeIds)
+    
+    if (libData) {
+      libData.forEach(r => {
+        if (r.ingredients) allIngredients.push(...r.ingredients)
+      })
+    }
+  }
+
+  // Extract ingredients from custom_meal (saved recipes stored as JSON)
+  mealData.forEach(meal => {
+    if (meal.custom_meal) {
+      try {
+        const parsed = JSON.parse(meal.custom_meal)
+        if (parsed.ingredients && Array.isArray(parsed.ingredients)) {
+          allIngredients.push(...parsed.ingredients)
+        }
+      } catch {
+        // Not JSON, ignore
+      }
+    }
+  })
+
+  // Remove duplicates (case-insensitive)
+  const uniqueIngredients = [...new Map(
+    allIngredients.filter(Boolean).map(item => [item.toLowerCase().trim(), item])
+  ).values()]
+
+  return uniqueIngredients
+}
+// ============================================
+// PASSWORD RESET FUNCTIONS
+// ============================================
+
+export const sendPasswordResetEmail = async (email) => {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  })
+
+  if (error) {
+    console.error('Error sending reset email:', error)
+    throw error
+  }
+
+  return data
+}
+
+export const updatePassword = async (newPassword) => {
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword
+  })
+
+  if (error) {
+    console.error('Error updating password:', error)
+    throw error
+  }
+
+  return data
+}
+
+// ============================================
+// EMAIL VERIFICATION FUNCTIONS
+// ============================================
+
+export const resendVerificationEmail = async (email) => {
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email,
+  })
+
+  if (error) {
+    console.error('Error resending verification:', error)
+    throw error
+  }
+
+  return data
 }

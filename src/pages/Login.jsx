@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Heart } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon } from 'lucide-react'
+import { useToast } from '../contexts/ToastContext'
 
 const Login = () => {
   const [email, setEmail] = useState('')
@@ -15,22 +16,24 @@ const Login = () => {
   
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const { toast } = useToast()
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+  e.preventDefault()
+  setLoading(true)
+  setError('')
 
-    const { error } = await signIn(email, password)
-    
-    if (error) {
-      setError(error)
-      setLoading(false)
-    } else {
-      navigate('/dashboard')
-    }
+  try {
+    await signIn(email, password)
+    toast.success('Welcome back! 👋')
+    navigate('/dashboard')
+  } catch (error) {
+    toast.error(error.message || 'Failed to sign in')
+    setError(error.message)
+  } finally {
+    setLoading(false)
   }
-
+}
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${
   isDark 
@@ -109,6 +112,15 @@ const Login = () => {
                   placeholder="Enter your password"
                   required
                 />
+                {/* After the password input, before the submit button */}
+<div className="flex justify-end">
+  <Link 
+    to="/forgot-password" 
+    className="text-sm text-temple-purple hover:underline"
+  >
+    Forgot password?
+  </Link>
+</div>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -136,6 +148,7 @@ const Login = () => {
                 </>
               )}
             </button>
+            
           </form>
 
           <div className="mt-6 text-center">

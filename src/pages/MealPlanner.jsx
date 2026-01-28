@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { getMealPlan, addMealToPlan, removeMealFromPlan, getUserRecipes, getShoppingList, getRecipeLibrary } from '../lib/supabase'
+import FeatureGate from '../components/FeatureGate'
 import { 
   Calendar,
   ChefHat,
@@ -19,7 +20,9 @@ import {
   Check,
   Copy,
   BookOpen,
-  Heart
+  Heart,
+  Package,
+  PlusCircle
 } from 'lucide-react'
 
 const MealPlanner = () => {
@@ -35,8 +38,16 @@ const MealPlanner = () => {
   const [showAddModal, setShowAddModal] = useState(null)
   const [showShoppingList, setShowShoppingList] = useState(false)
   const [shoppingList, setShoppingList] = useState([])
+  const [checkedItems, setCheckedItems] = useState({})
   const [recipeSource, setRecipeSource] = useState('saved') // 'saved' or 'library'
   const [quickAddRecipe, setQuickAddRecipe] = useState(null) // Recipe passed via navigation
+  const [showPantry, setShowPantry] = useState(false)
+  const [pantryItems, setPantryItems] = useState(() => {
+    const saved = localStorage.getItem('pantryItems')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [newPantryItem, setNewPantryItem] = useState('')
+  const [shoppingListView, setShoppingListView] = useState('needed') // 'needed' or 'all'
 
   const mealTypes = [
     { id: 'breakfast', label: 'Breakfast', icon: Coffee },
@@ -81,24 +92,36 @@ const MealPlanner = () => {
 
   const loadData = async () => {
     setLoading(true)
-    const [planData, recipesData, libraryData] = await Promise.all([
-      getMealPlan(user.id, startDate, endDate),
-      getUserRecipes(user.id),
-      getRecipeLibrary('popular')
-    ])
-    setMealPlan(planData)
-    setRecipes(recipesData)
-    setLibraryRecipes(libraryData || [])
+    try {
+      console.log('📅 Loading meal planner data...')
+      const [planData, recipesData, libraryData] = await Promise.all([
+        getMealPlan(user.id, startDate, endDate),
+        getUserRecipes(user.id),
+        getRecipeLibrary('popular')
+      ])
+      console.log('📋 Meal plan:', planData?.length || 0, 'entries')
+      console.log('💾 Saved recipes:', recipesData?.length || 0)
+      console.log('📚 Library recipes:', libraryData?.length || 0)
+      setMealPlan(planData)
+      setRecipes(recipesData)
+      setLibraryRecipes(libraryData || [])
+    } catch (error) {
+      console.error('❌ Error loading meal planner:', error)
+    }
     setLoading(false)
   }
 
-  const handleAddMeal = async (date, mealType, recipeId, source = 'saved') => {
+  const handleAddMeal = async (date, mealType, recipeId, source = 'saved', recipeData = null) => {
     try {
-      const newMeal = await addMealToPlan(user.id, date, mealType, recipeId, source)
+      console.log('📅 Adding meal:', { date, mealType, recipeId, source })
+      const newMeal = await addMealToPlan(user.id, date, mealType, recipeId, source, recipeData)
+      console.log('✅ Meal added:', newMeal)
       setMealPlan(prev => [...prev.filter(m => !(m.date === date && m.meal_type === mealType)), newMeal])
       setShowAddModal(null)
+      setQuickAddRecipe(null)
     } catch (error) {
-      console.error('Failed to add meal:', error)
+      console.error('❌ Failed to add meal:', error)
+      alert('Failed to add meal: ' + error.message)
     }
   }
 
@@ -114,13 +137,55 @@ const MealPlanner = () => {
   const generateShoppingList = async () => {
     const list = await getShoppingList(user.id, startDate, endDate)
     setShoppingList(list)
+    setCheckedItems({}) // Reset checked items
     setShowShoppingList(true)
   }
 
   const copyShoppingList = () => {
-    const text = shoppingList.join('\n')
+    const itemsToCopy = shoppingListView === 'needed' 
+      ? shoppingList.filter(item => !isInPantry(item))
+      : shoppingList
+    const text = itemsToCopy.join('\n')
     navigator.clipboard.writeText(text)
   }
+
+  // Pantry functions
+  const isInPantry = (ingredient) => {
+    const ingredientLower = ingredient.toLowerCase()
+    return pantryItems.some(pantryItem => 
+      ingredientLower.includes(pantryItem.toLowerCase()) ||
+      pantryItem.toLowerCase().includes(ingredientLower.split(' ').pop())
+    )
+  }
+
+  const addToPantry = (item) => {
+    // Extract the main ingredient (last word usually)
+    const words = item.split(' ')
+    const mainIngredient = words.length > 1 ? words.slice(-1).join(' ') : item
+    if (!pantryItems.some(p => p.toLowerCase() === mainIngredient.toLowerCase())) {
+      const updated = [...pantryItems, mainIngredient]
+      setPantryItems(updated)
+      localStorage.setItem('pantryItems', JSON.stringify(updated))
+    }
+  }
+
+  const addNewPantryItem = () => {
+    if (newPantryItem.trim() && !pantryItems.some(p => p.toLowerCase() === newPantryItem.toLowerCase())) {
+      const updated = [...pantryItems, newPantryItem.trim()]
+      setPantryItems(updated)
+      localStorage.setItem('pantryItems', JSON.stringify(updated))
+      setNewPantryItem('')
+    }
+  }
+
+  const removePantryItem = (index) => {
+    const updated = pantryItems.filter((_, i) => i !== index)
+    setPantryItems(updated)
+    localStorage.setItem('pantryItems', JSON.stringify(updated))
+  }
+
+  const neededItems = shoppingList.filter(item => !isInPantry(item))
+  const inPantryItems = shoppingList.filter(item => isInPantry(item))
 
   const getMealForSlot = (date, mealType) => {
     const dateStr = date.toISOString().split('T')[0]
@@ -147,26 +212,47 @@ const MealPlanner = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-20 lg:pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
-        <div>
-          <h1 className={`text-3xl md:text-4xl font-display font-bold mb-2 ${
-            isDark ? 'text-white' : 'text-gray-800'
-          }`}>
-            Meal Planner
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Plan your healthy meals for the week
-          </p>
+    <FeatureGate feature="meal_planner" requiredPlan="starter">
+      <div className="max-w-7xl mx-auto space-y-6 pb-20 lg:pb-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 animate-fade-in">
+          <div>
+            <h1 className={`text-3xl md:text-4xl font-display font-bold mb-2 ${
+              isDark ? 'text-white' : 'text-gray-800'
+            }`}>
+              Meal Planner
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Plan your healthy meals for the week
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+            onClick={() => setShowPantry(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+              isDark 
+                ? 'bg-white/10 text-white hover:bg-white/20 border border-white/10' 
+                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            <span className="hidden sm:inline">Pantry</span>
+            {pantryItems.length > 0 && (
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                isDark ? 'bg-temple-gold/20 text-temple-gold' : 'bg-temple-purple/10 text-temple-purple'
+              }`}>
+                {pantryItems.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={generateShoppingList}
+            className="btn-primary flex items-center gap-2"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            <span className="hidden sm:inline">Shopping List</span>
+          </button>
         </div>
-        <button
-          onClick={generateShoppingList}
-          className="btn-primary flex items-center gap-2"
-        >
-          <ShoppingCart className="w-5 h-5" />
-          Shopping List
-        </button>
       </div>
 
       {/* Week Navigation */}
@@ -350,7 +436,7 @@ const MealPlanner = () => {
                     {recipes.map((recipe) => (
                       <button
                         key={recipe.id}
-                        onClick={() => handleAddMeal(showAddModal.date, showAddModal.mealType, recipe.id, 'saved')}
+                        onClick={() => handleAddMeal(showAddModal.date, showAddModal.mealType, recipe.id, 'saved', recipe)}
                         className={`w-full p-4 rounded-xl text-left transition-all ${
                           isDark 
                             ? 'bg-white/5 hover:bg-white/10 border border-white/10' 
@@ -444,8 +530,36 @@ const MealPlanner = () => {
                 </button>
               </div>
             </div>
+
+            {/* View Toggle */}
+            {shoppingList.length > 0 && (
+              <div className="flex border-b border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShoppingListView('needed')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                    shoppingListView === 'needed'
+                      ? 'text-temple-purple border-b-2 border-temple-purple bg-temple-purple/5'
+                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  Need to Buy ({neededItems.length})
+                </button>
+                <button
+                  onClick={() => setShoppingListView('all')}
+                  className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                    shoppingListView === 'all'
+                      ? 'text-temple-gold border-b-2 border-temple-gold bg-temple-gold/5'
+                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <Package className="w-4 h-4" />
+                  All Items ({shoppingList.length})
+                </button>
+              </div>
+            )}
             
-            <div className="p-4 overflow-y-auto max-h-[60vh]">
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
               {shoppingList.length === 0 ? (
                 <div className="text-center py-8">
                   <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -453,19 +567,154 @@ const MealPlanner = () => {
                   <p className="text-sm text-gray-400">Add meals to your plan first!</p>
                 </div>
               ) : (
-                <ul className="space-y-2">
-                  {shoppingList.map((item, i) => (
-                    <li 
+                <>
+                  {shoppingListView === 'needed' ? (
+                    neededItems.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Check className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                        <p className="text-gray-500">You have everything!</p>
+                        <p className="text-sm text-gray-400">All ingredients are in your pantry</p>
+                      </div>
+                    ) : (
+                      <ul className="space-y-2">
+                        {neededItems.map((item, i) => (
+                          <li 
+                            key={i}
+                            className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                              isDark ? 'bg-white/5' : 'bg-gray-50'
+                            }`}
+                          >
+                            <div 
+                              onClick={() => setCheckedItems(prev => ({ ...prev, [item]: !prev[item] }))}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${
+                                checkedItems[item] 
+                                  ? 'bg-green-500 border-green-500' 
+                                  : 'border-gray-300 dark:border-gray-600'
+                              }`}
+                            >
+                              {checkedItems[item] && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className={`flex-1 ${isDark ? 'text-gray-300' : 'text-gray-700'} ${checkedItems[item] ? 'line-through opacity-50' : ''}`}>
+                              {item}
+                            </span>
+                            <button
+                              onClick={() => addToPantry(item)}
+                              className="p-1.5 rounded-lg hover:bg-green-500/20 text-gray-400 hover:text-green-500"
+                              title="Add to pantry"
+                            >
+                              <PlusCircle className="w-4 h-4" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <ul className="space-y-2">
+                      {shoppingList.map((item, i) => {
+                        const inPantry = isInPantry(item)
+                        return (
+                          <li 
+                            key={i}
+                            className={`flex items-center gap-3 p-3 rounded-xl transition-all ${
+                              inPantry 
+                                ? isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200'
+                                : isDark ? 'bg-white/5' : 'bg-gray-50'
+                            }`}
+                          >
+                            {inPantry ? (
+                              <Package className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <ShoppingCart className="w-5 h-5 text-gray-400" />
+                            )}
+                            <span className={`flex-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {item}
+                            </span>
+                            {inPantry && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-600 dark:text-green-400">
+                                In Pantry
+                              </span>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pantry Modal */}
+      {showPantry && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden ${
+            isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white'
+          }`}>
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h3 className={`text-lg font-semibold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                <Package className="w-5 h-5" />
+                My Pantry
+              </h3>
+              <button onClick={() => setShowPantry(false)}>
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Add new item */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newPantryItem}
+                  onChange={(e) => setNewPantryItem(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addNewPantryItem()}
+                  placeholder="Add item (e.g., olive oil, salt, flour)"
+                  className={`flex-1 px-4 py-2 rounded-xl border ${
+                    isDark 
+                      ? 'bg-white/5 border-white/10 text-white placeholder-gray-500' 
+                      : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'
+                  } focus:outline-none focus:ring-2 focus:ring-temple-purple/50`}
+                />
+                <button
+                  onClick={addNewPantryItem}
+                  className="px-4 py-2 bg-temple-purple text-white rounded-xl hover:bg-temple-purple-dark transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Items in your pantry will be marked as "already have" in shopping lists
+              </p>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
+              {pantryItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">Your pantry is empty</p>
+                  <p className="text-sm text-gray-400">Add common ingredients you always have</p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {pantryItems.map((item, i) => (
+                    <div 
                       key={i}
-                      className={`flex items-center gap-3 p-3 rounded-xl ${
-                        isDark ? 'bg-white/5' : 'bg-gray-50'
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl ${
+                        isDark ? 'bg-white/10' : 'bg-gray-100'
                       }`}
                     >
-                      <div className="w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-600" />
                       <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{item}</span>
-                    </li>
+                      <button
+                        onClick={() => removePantryItem(i)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           </div>
@@ -570,7 +819,8 @@ const MealPlanner = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </FeatureGate>
   )
 }
 

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Heart, CheckCircle } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon } from 'lucide-react'
+import { useToast } from '../contexts/ToastContext'
 
 const Signup = () => {
   const [fullName, setFullName] = useState('')
@@ -18,6 +19,7 @@ const Signup = () => {
   
   const { signUp } = useAuth()
   const navigate = useNavigate()
+  const { toast } = useToast()
 
   const passwordRequirements = [
     { text: 'At least 8 characters', met: password.length >= 8 },
@@ -28,17 +30,6 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
     setLoading(true)
 
     const { error } = await signUp(email, password, fullName)

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAdmin } from '../../contexts/AdminContext'
-import { LayoutDashboard, Users, ChefHat, BookOpen, Settings, LogOut, Menu, X, Shield, BarChart3, ArrowLeft } from 'lucide-react'
+import { LayoutDashboard, Users, ChefHat, BookOpen, Settings, LogOut, Menu, X, Shield, BarChart3, ArrowLeft, Zap } from 'lucide-react'
 
 const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -15,6 +15,7 @@ const AdminLayout = ({ children }) => {
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { name: 'Users', href: '/admin/users', icon: Users },
     { name: 'Recipes', href: '/admin/recipes', icon: ChefHat },
+    { name: 'Challenges', href: '/admin/challenges', icon: Zap },
     { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   ]
 

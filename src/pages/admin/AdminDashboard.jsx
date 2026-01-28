@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getAdminStats } from '../../lib/adminSupabase'
-import { Users, ChefHat, BookOpen, Trophy, TrendingUp, Flame, ArrowRight } from 'lucide-react'
+import { Users, ChefHat, BookOpen, Trophy, TrendingUp, Flame, ArrowRight, Zap } from 'lucide-react'
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null)
@@ -28,7 +28,8 @@ const AdminDashboard = () => {
     { label: 'Total Users', value: stats?.users?.total || 0, change: `+${stats?.users?.newWeek || 0} this week`, icon: Users, color: 'blue', link: '/admin/users' },
     { label: 'Recipes Created', value: stats?.recipes?.total || 0, change: `+${stats?.recipes?.week || 0} this week`, icon: ChefHat, color: 'green', link: '/admin/recipes' },
     { label: 'Devotionals Completed', value: stats?.devotionals?.total || 0, change: `+${stats?.devotionals?.week || 0} this week`, icon: BookOpen, color: 'purple', link: '/admin/analytics' },
-    { label: 'Total Points', value: stats?.engagement?.totalPoints?.toLocaleString() || 0, change: `Avg streak: ${stats?.engagement?.avgStreak || 0} days`, icon: Trophy, color: 'gold', link: '/admin/analytics' }
+    { label: 'Total Points', value: stats?.engagement?.totalPoints?.toLocaleString() || 0, change: `Avg streak: ${stats?.engagement?.avgStreak || 0} days`, icon: Trophy, color: 'gold', link: '/admin/analytics' },
+    { label: 'Challenges', value: 'Manage', change: 'Create & edit challenges', icon: Zap, color: 'orange', link: '/admin/challenges' }
   ]
 
   return (
@@ -45,7 +46,7 @@ const AdminDashboard = () => {
             <Link key={i} to={stat.link} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-gray-600 transition-all group">
               <div className="flex items-start justify-between mb-4">
                 <div className={`w-12 h-12 rounded-xl bg-${stat.color}-500/20 flex items-center justify-center`}>
-                  <Icon className="w-6 h-6" style={{ color: stat.color === 'blue' ? '#3b82f6' : stat.color === 'green' ? '#22c55e' : stat.color === 'purple' ? '#a855f7' : '#d4a574' }} />
+                  <Icon className="w-6 h-6" style={{ color: stat.color === 'blue' ? '#3b82f6' : stat.color === 'green' ? '#22c55e' : stat.color === 'purple' ? '#a855f7' : stat.color === 'orange' ? '#f97316' : '#d4a574' }} />
                 </div>
                 <ArrowRight className="w-5 h-5 text-gray-500 group-hover:text-temple-gold transition-all" />
               </div>

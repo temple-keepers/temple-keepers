@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
+import UpgradeBanner from '../components/UpgradeBanner'
+import { getUserChallenges } from '../lib/challenges'
 import { 
   Flame, 
   BookOpen, 
@@ -14,14 +16,18 @@ import {
   Target,
   TrendingUp,
   Leaf,
-  Sparkles
+  Sparkles,
+  Play,
+  ChevronRight
 } from 'lucide-react'
 
 const Dashboard = () => {
   const { user, profile, stats } = useAuth()
   const [greeting, setGreeting] = useState('')
   const [timeIcon, setTimeIcon] = useState(Sun)
+  const [activeChallenge, setActiveChallenge] = useState(null)
   const { isDark } = useTheme()
+  const navigate = useNavigate()
 
   // Daily scripture - rotates based on day
   const dailyScriptures = [
@@ -71,7 +77,33 @@ const Dashboard = () => {
     }
   }, [])
 
- const userStats = [
+  useEffect(() => {
+    if (user) {
+      loadActiveChallenge()
+    }
+  }, [user])
+
+  const loadActiveChallenge = async () => {
+    try {
+      const challenges = await getUserChallenges(user.id)
+      const active = challenges?.find(c => c.status === 'active')
+      setActiveChallenge(active || null)
+    } catch (err) {
+      console.error('Error loading active challenge:', err)
+      setActiveChallenge(null)
+    }
+  }
+
+  useEffect(() => {
+    // Check if user needs onboarding (no health goals set = hasn't completed onboarding)
+    // But respect if user has skipped onboarding
+    const skipped = localStorage.getItem('onboarding_skipped')
+    if (profile && (!profile.health_goals || profile.health_goals.length === 0) && !skipped) {
+      navigate('/onboarding')
+    }
+  }, [profile, navigate])
+
+  const userStats = [
   {
     label: 'Day Streak',
     value: stats?.streak_days || 0,
@@ -123,18 +155,21 @@ const Dashboard = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20 lg:pb-8">
+      {/* Upgrade Banner */}
+      <UpgradeBanner />
+      
       {/* Welcome Section */}
-<div className="welcome-card animate-fade-in">
-  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-    <div>
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 ${
-        isDark 
-          ? 'bg-temple-gold/10 text-temple-gold' 
-          : 'bg-temple-purple/10 text-temple-purple'
-      }`}>
-        <TimeIcon className="w-4 h-4" />
-        <span className="text-sm font-medium">{greeting}</span>
-      </div>
+      <div className="welcome-card animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div>
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 ${
+              isDark 
+                ? 'bg-temple-gold/10 text-temple-gold' 
+                : 'bg-temple-purple/10 text-temple-purple'
+            }`}>
+              <TimeIcon className="w-4 h-4" />
+              <span className="text-sm font-medium">{greeting}</span>
+            </div>
       <h1 className={`text-3xl md:text-4xl font-display font-bold mb-2 ${
         isDark ? 'gradient-text-gold' : 'gradient-text'
       }`}>
@@ -263,6 +298,38 @@ const Dashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Active Challenge Card */}
+      {activeChallenge && (
+        <Link 
+          to={`/challenges/${activeChallenge.challenge?.slug}`}
+          className={`block rounded-2xl p-5 transition-all hover:-translate-y-1 ${
+            isDark 
+              ? 'bg-gradient-to-br from-orange-500/20 to-red-500/10 border border-orange-500/20' 
+              : 'bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-orange-500" />
+              </div>
+              <div>
+                <p className={`text-xs font-medium ${isDark ? 'text-orange-400' : 'text-orange-600'}`}>
+                  Active Challenge
+                </p>
+                <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {activeChallenge.challenge?.title}
+                </p>
+                <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Day {activeChallenge.current_day} of {activeChallenge.challenge?.duration_days}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className={`w-5 h-5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+          </div>
+        </Link>
+      )}
     </div>
   )
 }

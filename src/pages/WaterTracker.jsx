@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { getWaterLog, updateWaterLog, getWaterHistory } from '../lib/supabase'
+import FeatureGate from '../components/FeatureGate' 
 import { 
   Droplets, 
   Plus, 
@@ -87,6 +88,7 @@ const WaterTracker = () => {
   }
 
   return (
+    <FeatureGate feature="water_tracker" requiredPlan="starter">
     <div className="max-w-4xl mx-auto space-y-8 pb-20 lg:pb-8">
       {/* Header */}
       <div className="animate-fade-in">
@@ -99,7 +101,7 @@ const WaterTracker = () => {
           Stay hydrated, honor your temple 💧
         </p>
       </div>
-
+<div className="max-w-4xl mx-auto space-y-8 pb-20 lg:pb-8"></div>
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Main Tracker */}
         <div className="glass-card-strong rounded-3xl p-8 text-center animate-fade-in">
@@ -244,7 +246,11 @@ const WaterTracker = () => {
               {[...Array(7)].map((_, i) => {
                 const date = new Date()
                 date.setDate(date.getDate() - i)
-                const dateStr = date.toISOString().split('T')[0]
+                // Use local date string format
+                const year = date.getFullYear()
+                const month = String(date.getMonth() + 1).padStart(2, '0')
+                const day = String(date.getDate()).padStart(2, '0')
+                const dateStr = `${year}-${month}-${day}`
                 const dayLog = history.find(h => h.date === dateStr)
                 const dayGlasses = dayLog?.glasses || 0
                 const dayGoal = dayLog?.goal || goal
@@ -258,7 +264,7 @@ const WaterTracker = () => {
                         ? isDark ? 'text-blue-400 font-medium' : 'text-blue-600 font-medium'
                         : 'text-gray-500'
                     }`}>
-                      {isToday ? 'Today' : date.toLocaleDateString('en', { weekday: 'short' })}
+                      {isToday ? 'Today' : date.toLocaleDateString('en-GB', { weekday: 'short' })}
                     </span>
                     <div className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div 
@@ -347,6 +353,7 @@ const WaterTracker = () => {
         </div>
       )}
     </div>
+    </FeatureGate>
   )
 }
 
