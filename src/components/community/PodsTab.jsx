@@ -293,11 +293,20 @@ const CreatePodModal = ({ user, isDark, toast, onClose, onCreated }) => {
     }
     setCreating(true)
     try {
+      console.log('🟢 Starting pod creation from frontend')
       await createPod(user.id, name, description, focus, isPrivate)
       toast.success('Pod created! 🎉')
       onCreated()
     } catch (error) {
-      toast.error('Failed to create pod')
+      console.error('🔴 Pod creation failed in frontend:', error)
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        full: error
+      })
+      toast.error(error.message || 'Failed to create pod')
     } finally {
       setCreating(false)
     }
