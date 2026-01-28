@@ -84,7 +84,7 @@ const MealPlanner = () => {
     const [planData, recipesData, libraryData] = await Promise.all([
       getMealPlan(user.id, startDate, endDate),
       getUserRecipes(user.id),
-      getRecipeLibrary({ sortBy: 'popular' })
+      getRecipeLibrary('popular')
     ])
     setMealPlan(planData)
     setRecipes(recipesData)
