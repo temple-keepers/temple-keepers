@@ -5,17 +5,9 @@ import { supabase } from './supabase'
 // ============================================
 
 export const getFeedPosts = async (limit = 20, offset = 0) => {
-  const { data, error } = await supabase
+  const { data: posts, error } = await supabase
     .from('community_posts')
-    .select(`
-      *,
-      profile:user_id (
-        id,
-        full_name,
-        avatar_url,
-        community_visible
-      )
-    `)
+    .select('*')
     .eq('is_hidden', false)
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
@@ -25,7 +17,22 @@ export const getFeedPosts = async (limit = 20, offset = 0) => {
     console.error('Error fetching posts:', error)
     return []
   }
-  return data || []
+  
+  if (!posts || posts.length === 0) return []
+  
+  // Fetch profiles for all user_ids
+  const userIds = [...new Set(posts.map(p => p.user_id))]
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url, community_visible')
+    .in('id', userIds)
+  
+  // Attach profiles to posts
+  const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+  return posts.map(post => ({
+    ...post,
+    profile: profileMap.get(post.user_id)
+  }))
 }
 
 export const createPost = async (userId, type, content, isAnonymous = false, imageUrl = null) => {
@@ -120,16 +127,9 @@ export const checkUserLiked = async (postId, userId) => {
 }
 
 export const getPostComments = async (postId) => {
-  const { data, error } = await supabase
+  const { data: comments, error } = await supabase
     .from('post_comments')
-    .select(`
-      *,
-      profile:user_id (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
+    .select('*')
     .eq('post_id', postId)
     .eq('is_hidden', false)
     .order('created_at', { ascending: true })
@@ -138,7 +138,21 @@ export const getPostComments = async (postId) => {
     console.error('Error fetching comments:', error)
     return []
   }
-  return data || []
+  
+  if (!comments || comments.length === 0) return []
+  
+  // Fetch profiles
+  const userIds = [...new Set(comments.map(c => c.user_id))]
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url')
+    .in('id', userIds)
+  
+  const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+  return comments.map(comment => ({
+    ...comment,
+    profile: profileMap.get(comment.user_id)
+  }))
 }
 
 export const addComment = async (postId, userId, content) => {
@@ -159,15 +173,7 @@ export const addComment = async (postId, userId, content) => {
 export const getPrayerRequests = async (limit = 50, offset = 0, category = null) => {
   let query = supabase
     .from('prayer_requests')
-    .select(`
-      *,
-      profile:user_id (
-        id,
-        full_name,
-        avatar_url,
-        community_visible
-      )
-    `)
+    .select('*')
     .eq('is_private', false)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -176,13 +182,27 @@ export const getPrayerRequests = async (limit = 50, offset = 0, category = null)
     query = query.eq('category', category)
   }
 
-  const { data, error } = await query
+  const { data: prayers, error } = await query
 
   if (error) {
     console.error('Error fetching prayers:', error)
     return []
   }
-  return data || []
+  
+  if (!prayers || prayers.length === 0) return []
+  
+  // Fetch profiles
+  const userIds = [...new Set(prayers.map(p => p.user_id))]
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url, community_visible')
+    .in('id', userIds)
+  
+  const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+  return prayers.map(prayer => ({
+    ...prayer,
+    profile: profileMap.get(prayer.user_id)
+  }))
 }
 
 export const getMyPrayerRequests = async (userId) => {
@@ -280,15 +300,9 @@ export const checkUserPrayed = async (prayerId, userId) => {
 // ============================================
 
 export const getPublicPods = async () => {
-  const { data, error } = await supabase
+  const { data: pods, error } = await supabase
     .from('pods')
-    .select(`
-      *,
-      members:pod_members(count),
-      creator:created_by (
-        full_name
-      )
-    `)
+    .select('*')
     .eq('is_private', false)
     .order('created_at', { ascending: false })
 
@@ -296,42 +310,79 @@ export const getPublicPods = async () => {
     console.error('Error fetching pods:', error)
     return []
   }
-  return data || []
+  
+  if (!pods || pods.length === 0) return []
+  
+  // Fetch member counts
+  const podIds = pods.map(p => p.id)
+  const { data: memberCounts } = await supabase
+    .from('pod_members')
+    .select('pod_id')
+    .in('pod_id', podIds)
+  
+  // Fetch creator profiles
+  const creatorIds = [...new Set(pods.map(p => p.created_by))]
+  const { data: creators } = await supabase
+    .from('profiles')
+    .select('id, full_name')
+    .in('id', creatorIds)
+  
+  const creatorMap = new Map(creators?.map(c => [c.id, c]) || [])
+  const countMap = new Map()
+  memberCounts?.forEach(m => {
+    countMap.set(m.pod_id, (countMap.get(m.pod_id) || 0) + 1)
+  })
+  
+  return pods.map(pod => ({
+    ...pod,
+    members: [{ count: countMap.get(pod.id) || 0 }],
+    creator: creatorMap.get(pod.created_by)
+  }))
 }
 
 export const getMyPods = async (userId) => {
-  const { data, error } = await supabase
+  const { data: memberships, error } = await supabase
     .from('pod_members')
-    .select(`
-      *,
-      pod:pod_id (
-        *,
-        members:pod_members(count)
-      )
-    `)
+    .select('*')
     .eq('user_id', userId)
 
   if (error) {
     console.error('Error fetching my pods:', error)
     return []
   }
-  return data?.map(pm => ({ ...pm.pod, my_role: pm.role })) || []
+  
+  if (!memberships || memberships.length === 0) return []
+  
+  // Fetch pod details
+  const podIds = memberships.map(m => m.pod_id)
+  const { data: pods } = await supabase
+    .from('pods')
+    .select('*')
+    .in('id', podIds)
+  
+  // Fetch member counts
+  const { data: memberCounts } = await supabase
+    .from('pod_members')
+    .select('pod_id')
+    .in('pod_id', podIds)
+  
+  const countMap = new Map()
+  memberCounts?.forEach(m => {
+    countMap.set(m.pod_id, (countMap.get(m.pod_id) || 0) + 1)
+  })
+  
+  const podMap = new Map(pods?.map(p => [p.id, p]) || [])
+  return memberships.map(pm => ({
+    ...podMap.get(pm.pod_id),
+    my_role: pm.role,
+    members: [{ count: countMap.get(pm.pod_id) || 0 }]
+  }))
 }
 
 export const getPodDetails = async (podId) => {
-  const { data, error } = await supabase
+  const { data: pod, error } = await supabase
     .from('pods')
-    .select(`
-      *,
-      members:pod_members (
-        *,
-        profile:user_id (
-          id,
-          full_name,
-          avatar_url
-        )
-      )
-    `)
+    .select('*')
     .eq('id', podId)
     .maybeSingle()
 
@@ -339,7 +390,36 @@ export const getPodDetails = async (podId) => {
     console.error('Error fetching pod:', error)
     return null
   }
-  return data
+  
+  if (!pod) return null
+  
+  // Fetch members
+  const { data: members } = await supabase
+    .from('pod_members')
+    .select('*')
+    .eq('pod_id', podId)
+  
+  if (!members || members.length === 0) {
+    return { ...pod, members: [] }
+  }
+  
+  // Fetch profiles
+  const userIds = members.map(m => m.user_id)
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url')
+    .in('id', userIds)
+  
+  const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+  const membersWithProfiles = members.map(m => ({
+    ...m,
+    profile: profileMap.get(m.user_id)
+  }))
+  
+  return {
+    ...pod,
+    members: membersWithProfiles
+  }
 }
 
 export const createPod = async (userId, name, description, focus, isPrivate = false) => {
