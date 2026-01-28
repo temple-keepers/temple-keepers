@@ -423,24 +423,35 @@ export const getPodDetails = async (podId) => {
 }
 
 export const createPod = async (userId, name, description, focus, isPrivate = false) => {
+  console.log('🔵 Creating pod:', { userId, name, description, focus, isPrivate })
   const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
+  const podData = {
+    name,
+    description,
+    focus,
+    is_private: isPrivate,
+    invite_code: inviteCode,
+    created_by: userId
+  }
+  
+  console.log('📤 Inserting pod:', podData)
+  
   const { data: pod, error: podError } = await supabase
     .from('pods')
-    .insert({
-      name,
-      description,
-      focus,
-      is_private: isPrivate,
-      invite_code: inviteCode,
-      created_by: userId
-    })
+    .insert(podData)
     .select()
     .single()
 
-  if (podError) throw podError
+  if (podError) {
+    console.error('❌ Pod creation error:', podError)
+    throw podError
+  }
+  
+  console.log('✅ Pod created:', pod)
 
   // Add creator as admin
+  console.log('📤 Adding creator as admin')
   const { error: memberError } = await supabase
     .from('pod_members')
     .insert({
@@ -449,8 +460,12 @@ export const createPod = async (userId, name, description, focus, isPrivate = fa
       role: 'admin'
     })
 
-  if (memberError) throw memberError
-
+  if (memberError) {
+    console.error('❌ Member creation error:', memberError)
+    throw memberError
+  }
+  
+  console.log('✅ Pod and membership created successfully')
   return pod
 }
 
