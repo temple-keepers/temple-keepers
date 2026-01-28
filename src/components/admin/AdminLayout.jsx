@@ -102,5 +102,3 @@ const AdminLayout = ({ children }) => {
     </div>
   )
 }
-
-export default AdminLayout
