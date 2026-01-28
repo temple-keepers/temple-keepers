@@ -77,61 +77,13 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanation):
     
   } catch (error) {
     console.error('❌ Generation failed:', error.message)
+    console.error('Full error:', error)
     
-    // Fallback recipe so app still works
-    const fallbackRecipe = {
-      title: "Mediterranean Quinoa Bowl",
-      description: "A nourishing bowl with protein and vegetables",
-      prepTime: "15 min",
-      cookTime: "20 min",
-      servings: "4",
-      ingredients: [
-        "1 cup quinoa, rinsed",
-        "2 cups vegetable broth",
-        "1 cucumber, diced",
-        "1 cup cherry tomatoes, halved",
-        "1/2 red onion, diced",
-        "1/2 cup kalamata olives, halved",
-        "1/2 cup feta cheese, crumbled",
-        "2 tablespoons olive oil",
-        "Juice of 1 lemon",
-        "Fresh parsley and mint",
-        "Salt and pepper to taste"
-      ],
-      instructions: [
-        "Bring vegetable broth to a boil and add quinoa",
-        "Reduce heat, cover, and simmer for 15 minutes until liquid is absorbed",
-        "Fluff quinoa with a fork and let cool for 5 minutes",
-        "In a large bowl, combine cucumber, tomatoes, onion, and olives",
-        "Add the cooled quinoa to the vegetables",
-        "Drizzle with olive oil and lemon juice, toss well",
-        "Top with crumbled feta cheese and fresh herbs",
-        "Season with salt and pepper to taste and serve"
-      ],
-      benefits: [
-        "Rich in plant-based protein and all essential amino acids from quinoa",
-        "High in heart-healthy monounsaturated fats from olive oil",
-        "Excellent source of antioxidants from fresh vegetables and herbs",
-        "Supports digestive health with fiber from quinoa and vegetables"
-      ],
-      nutritionInfo: {
-        calories: "320",
-        protein: "12g",
-        carbs: "45g",
-        fiber: "6g"
-      },
-      micronutrients: {
-        vitamin_a: "15% DV",
-        vitamin_c: "35% DV",
-        vitamin_k: "45% DV",
-        iron: "20% DV",
-        potassium: "12% DV",
-        calcium: "10% DV"
-      }
+    // Return error instead of silent fallback so user knows there's an issue
+    return { 
+      recipe: null, 
+      error: `Recipe generation failed: ${error.message}. Please check that the Gemini API key is valid and try again.`
     }
-    
-    console.log('📋 Using fallback recipe')
-    return { recipe: fallbackRecipe, error: null }
   }
 }
 
