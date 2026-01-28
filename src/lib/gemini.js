@@ -24,7 +24,7 @@ const parseGeminiJSON = (text) => {
 export const generateRecipe = async (preferences) => {
   try {
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 1.0, // Higher temperature for more variety
       }
@@ -90,7 +90,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanation):
 export const generateDevotional = async (theme = 'general wellness') => {
   try {
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash'
+      model: 'gemini-2.0-flash'
     })
 
     const prompt = `Create a brief Christian devotional about ${theme}. Return ONLY valid JSON:
