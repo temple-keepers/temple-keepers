@@ -24,6 +24,11 @@ import AdminAnalytics from './pages/admin/AdminAnalytics'
 import AdminSettings from './pages/admin/AdminSettings'
 import AdminDebug from './pages/admin/AdminDebug'
 
+import Terms from './pages/legal/Terms'
+import Privacy from './pages/legal/Privacy'
+import Cookies from './pages/legal/Cookies'
+import Disclaimer from './pages/legal/Disclaimer'
+
 // Public route wrapper - redirects to dashboard if already logged in
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth()
@@ -155,6 +160,12 @@ function AppRoutes() {
       <Route path="/admin/recipes" element={<AdminRoute><AdminLayout><AdminRecipes /></AdminLayout></AdminRoute>} />
       <Route path="/admin/analytics" element={<AdminRoute><AdminLayout><AdminAnalytics /></AdminLayout></AdminRoute>} />
       <Route path="/admin/settings" element={<AdminRoute><AdminLayout><AdminSettings /></AdminLayout></AdminRoute>} />
+
+{/* Legal Pages - Public */}
+<Route path="/terms" element={<Terms />} />
+<Route path="/privacy" element={<Privacy />} />
+<Route path="/cookies" element={<Cookies />} />
+<Route path="/disclaimer" element={<Disclaimer />} />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

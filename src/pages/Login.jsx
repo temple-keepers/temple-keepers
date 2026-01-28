@@ -158,4 +158,12 @@ const Login = () => {
   )
 }
 
+{/* Legal Links */}
+<div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
+  By signing in, you agree to our{' '}
+  <Link to="/terms" className="text-temple-purple hover:underline">Terms of Service</Link>
+  {' '}and{' '}
+  <Link to="/privacy" className="text-temple-purple hover:underline">Privacy Policy</Link>
+</div>
+
 export default Login
