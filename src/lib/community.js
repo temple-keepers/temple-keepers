@@ -537,16 +537,9 @@ export const leavePod = async (podId, userId) => {
 }
 
 export const getPodMessages = async (podId, limit = 50) => {
-  const { data, error } = await supabase
+  const { data: messages, error } = await supabase
     .from('pod_messages')
-    .select(`
-      *,
-      profile:user_id (
-        id,
-        full_name,
-        avatar_url
-      )
-    `)
+    .select('*')
     .eq('pod_id', podId)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -555,7 +548,23 @@ export const getPodMessages = async (podId, limit = 50) => {
     console.error('Error fetching messages:', error)
     return []
   }
-  return (data || []).reverse()
+  
+  if (!messages || messages.length === 0) return []
+  
+  // Fetch profiles separately
+  const userIds = [...new Set(messages.map(m => m.user_id))]
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url')
+    .in('id', userIds)
+  
+  const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
+  const messagesWithProfiles = messages.map(message => ({
+    ...message,
+    profile: profileMap.get(message.user_id)
+  }))
+  
+  return messagesWithProfiles.reverse()
 }
 
 export const sendPodMessage = async (podId, userId, content, type = 'message') => {
