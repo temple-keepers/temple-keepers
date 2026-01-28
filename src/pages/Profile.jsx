@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { updateProfile } from '../lib/supabase'
+import CookieSettingsButton from '../components/CookieSettingsButton'
 import { 
   User, 
   Mail, 
@@ -142,6 +143,13 @@ const Profile = () => {
       setSaving(false)
     }
   }
+
+  <div className="mt-8">
+  <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+    Privacy & Settings
+  </h3>
+  <CookieSettingsButton />
+</div>
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 lg:pb-8">

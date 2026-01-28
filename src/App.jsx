@@ -28,6 +28,7 @@ import Terms from './pages/legal/Terms'
 import Privacy from './pages/legal/Privacy'
 import Cookies from './pages/legal/Cookies'
 import Disclaimer from './pages/legal/Disclaimer'
+import CookieConsent from './components/CookieConsent'
 
 // Public route wrapper - redirects to dashboard if already logged in
 const PublicRoute = ({ children }) => {
@@ -153,6 +154,22 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
+
+      function App() 
+  return (
+    <Router>
+      <ThemeProvider>
+        <AuthProvider>
+          <AdminProvider>
+            <AppRoutes />
+            <CookieConsent />
+          </AdminProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
+  )
+
+
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminRoute>} />
