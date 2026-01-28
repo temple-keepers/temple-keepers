@@ -16,8 +16,84 @@ import {
   UtensilsCrossed,
   Flame,
   Leaf,
-  Zap
+  Zap,
+  Minus,
+  Plus
 } from 'lucide-react'
+
+// Helper function to scale ingredient quantities
+const scaleIngredient = (ingredient, multiplier) => {
+  if (multiplier === 1) return ingredient
+  
+  // Match patterns like "1 cup", "2.5 tbsp", "1/2 cup", "1 1/2 cups"
+  const patterns = [
+    // Mixed numbers: "1 1/2 cups"
+    /^(\d+)\s+(\d+)\/(\d+)\s+(.+)$/,
+    // Fractions: "1/2 cup"
+    /^(\d+)\/(\d+)\s+(.+)$/,
+    // Decimals and whole numbers: "2.5 cups" or "2 cups"
+    /^([\d.]+)\s+(.+)$/
+  ]
+  
+  // Try mixed number pattern first
+  let match = ingredient.match(patterns[0])
+  if (match) {
+    const whole = parseFloat(match[1])
+    const num = parseFloat(match[2])
+    const denom = parseFloat(match[3])
+    const rest = match[4]
+    const originalValue = whole + (num / denom)
+    const newValue = originalValue * multiplier
+    return formatNumber(newValue) + ' ' + rest
+  }
+  
+  // Try fraction pattern
+  match = ingredient.match(patterns[1])
+  if (match) {
+    const num = parseFloat(match[1])
+    const denom = parseFloat(match[2])
+    const rest = match[3]
+    const originalValue = num / denom
+    const newValue = originalValue * multiplier
+    return formatNumber(newValue) + ' ' + rest
+  }
+  
+  // Try decimal/whole number pattern
+  match = ingredient.match(patterns[2])
+  if (match) {
+    const originalValue = parseFloat(match[1])
+    const rest = match[2]
+    const newValue = originalValue * multiplier
+    return formatNumber(newValue) + ' ' + rest
+  }
+  
+  return ingredient
+}
+
+// Format number to nice display (avoid ugly decimals)
+const formatNumber = (num) => {
+  if (num === Math.floor(num)) return num.toString()
+  
+  // Common fractions
+  const fractions = [
+    { value: 0.25, display: '1/4' },
+    { value: 0.33, display: '1/3' },
+    { value: 0.5, display: '1/2' },
+    { value: 0.67, display: '2/3' },
+    { value: 0.75, display: '3/4' }
+  ]
+  
+  const whole = Math.floor(num)
+  const decimal = num - whole
+  
+  for (const frac of fractions) {
+    if (Math.abs(decimal - frac.value) < 0.05) {
+      return whole > 0 ? `${whole} ${frac.display}` : frac.display
+    }
+  }
+  
+  return num.toFixed(1).replace(/\.0$/, '')
+}
 
 const Recipes = () => {
   const { user, refreshUserData, profile } = useAuth()
@@ -29,6 +105,7 @@ const Recipes = () => {
   const [published, setPublished] = useState(false)
   const [recipe, setRecipe] = useState(null)
   const [error, setError] = useState('')
+  const [servingMultiplier, setServingMultiplier] = useState(1)
   
   const [preferences, setPreferences] = useState({
     mealType: 'dinner',
@@ -82,6 +159,7 @@ const Recipes = () => {
     setError('')
     setSaved(false)
     setPublished(false)
+    setServingMultiplier(1) // Reset serving size when generating new recipe
 
     try {
       const result = await generateRecipe({
@@ -388,9 +466,27 @@ const Recipes = () => {
                     <Flame className="w-4 h-4" />
                     <span className="text-sm">Cook: {recipe.cookTime}</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-white/20 rounded-lg px-3 py-2">
+                  {/* Adjustable Servings */}
+                  <div className="flex items-center gap-2 bg-white/20 rounded-lg px-2 py-1">
                     <Users className="w-4 h-4" />
-                    <span className="text-sm">Serves: {recipe.servings}</span>
+                    <span className="text-sm">Serves:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setServingMultiplier(Math.max(0.5, servingMultiplier - 0.5))}
+                        className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-sm font-semibold min-w-[3rem] text-center">
+                        {Math.round(parseInt(recipe.servings) * servingMultiplier)}
+                      </span>
+                      <button
+                        onClick={() => setServingMultiplier(Math.min(4, servingMultiplier + 0.5))}
+                        className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -428,16 +524,27 @@ const Recipes = () => {
 
                 {/* Ingredients */}
                 <div>
-                  <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    Ingredients
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                      Ingredients
+                    </h3>
+                    {servingMultiplier !== 1 && (
+                      <span className={`text-sm px-2 py-1 rounded-full ${
+                        isDark ? 'bg-temple-gold/20 text-temple-gold' : 'bg-temple-purple/10 text-temple-purple'
+                      }`}>
+                        Adjusted for {Math.round(parseInt(recipe.servings) * servingMultiplier)} servings
+                      </span>
+                    )}
+                  </div>
                   <ul className="grid md:grid-cols-2 gap-2">
                     {recipe.ingredients?.map((ingredient, idx) => (
                       <li key={idx} className={`flex items-center gap-3 p-3 rounded-xl ${
                         isDark ? 'bg-white/5 border border-white/10' : 'bg-white/50'
                       }`}>
                         <div className="w-2 h-2 rounded-full bg-gradient-to-r from-temple-purple to-temple-gold" />
-                        <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{ingredient}</span>
+                        <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>
+                          {scaleIngredient(ingredient, servingMultiplier)}
+                        </span>
                       </li>
                     ))}
                   </ul>

@@ -602,6 +602,15 @@ export const getMealPlan = async (userId, startDate, endDate) => {
         cook_time,
         servings,
         ingredients
+      ),
+      saved_recipe:saved_recipe_id (
+        id,
+        title,
+        description,
+        prep_time,
+        cook_time,
+        servings,
+        ingredients
       )
     `)
     .eq('user_id', userId)
@@ -613,23 +622,37 @@ export const getMealPlan = async (userId, startDate, endDate) => {
     console.error('Error fetching meal plan:', error)
     return []
   }
-  return data || []
+  
+  // Normalize the data - merge recipe from either source
+  return (data || []).map(meal => ({
+    ...meal,
+    recipe: meal.recipe || meal.saved_recipe
+  }))
 }
 
-export const addMealToPlan = async (userId, date, mealType, recipeId = null, customMeal = null, notes = null) => {
+export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSource = 'saved') => {
+  // Determine which column to use based on the source
+  const insertData = {
+    user_id: userId,
+    date,
+    meal_type: mealType,
+    recipe_id: recipeSource === 'library' ? recipeId : null,
+    saved_recipe_id: recipeSource === 'saved' ? recipeId : null
+  }
+  
   const { data, error } = await supabase
     .from('meal_plans')
-    .upsert({
-      user_id: userId,
-      date,
-      meal_type: mealType,
-      recipe_id: recipeId,
-      custom_meal: customMeal,
-      notes
-    }, { onConflict: 'user_id,date,meal_type' })
+    .upsert(insertData, { onConflict: 'user_id,date,meal_type' })
     .select(`
       *,
       recipe:recipe_id (
+        id,
+        title,
+        description,
+        prep_time,
+        cook_time
+      ),
+      saved_recipe:saved_recipe_id (
         id,
         title,
         description,
@@ -643,7 +666,12 @@ export const addMealToPlan = async (userId, date, mealType, recipeId = null, cus
     console.error('Error adding meal to plan:', error)
     throw error
   }
-  return data
+  
+  // Return normalized data
+  return {
+    ...data,
+    recipe: data.recipe || data.saved_recipe
+  }
 }
 
 export const removeMealFromPlan = async (mealPlanId) => {

@@ -92,9 +92,9 @@ const MealPlanner = () => {
     setLoading(false)
   }
 
-  const handleAddMeal = async (date, mealType, recipeId) => {
+  const handleAddMeal = async (date, mealType, recipeId, source = 'saved') => {
     try {
-      const newMeal = await addMealToPlan(user.id, date, mealType, recipeId)
+      const newMeal = await addMealToPlan(user.id, date, mealType, recipeId, source)
       setMealPlan(prev => [...prev.filter(m => !(m.date === date && m.meal_type === mealType)), newMeal])
       setShowAddModal(null)
     } catch (error) {
@@ -350,7 +350,7 @@ const MealPlanner = () => {
                     {recipes.map((recipe) => (
                       <button
                         key={recipe.id}
-                        onClick={() => handleAddMeal(showAddModal.date, showAddModal.mealType, recipe.id)}
+                        onClick={() => handleAddMeal(showAddModal.date, showAddModal.mealType, recipe.id, 'saved')}
                         className={`w-full p-4 rounded-xl text-left transition-all ${
                           isDark 
                             ? 'bg-white/5 hover:bg-white/10 border border-white/10' 
@@ -385,7 +385,7 @@ const MealPlanner = () => {
                     {libraryRecipes.map((recipe) => (
                       <button
                         key={recipe.id}
-                        onClick={() => handleAddMeal(showAddModal.date, showAddModal.mealType, recipe.id)}
+                        onClick={() => handleAddMeal(showAddModal.date, showAddModal.mealType, recipe.id, 'library')}
                         className={`w-full p-4 rounded-xl text-left transition-all ${
                           isDark 
                             ? 'bg-white/5 hover:bg-white/10 border border-white/10' 
@@ -552,7 +552,7 @@ const MealPlanner = () => {
               <button
                 onClick={async () => {
                   if (quickAddRecipe.selectedDay && quickAddRecipe.selectedMeal) {
-                    await handleAddMeal(quickAddRecipe.selectedDay, quickAddRecipe.selectedMeal, quickAddRecipe.id)
+                    await handleAddMeal(quickAddRecipe.selectedDay, quickAddRecipe.selectedMeal, quickAddRecipe.id, 'library')
                     setQuickAddRecipe(null)
                   }
                 }}
