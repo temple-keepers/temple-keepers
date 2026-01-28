@@ -52,7 +52,6 @@ export const getFeedPosts = async (limit = 20, offset = 0) => {
   console.log('Posts with profiles:', postsWithProfiles.length)
   return postsWithProfiles
 }
-}
 
 export const createPost = async (userId, type, content, isAnonymous = false, imageUrl = null) => {
   const { data, error } = await supabase
