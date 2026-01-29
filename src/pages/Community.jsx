@@ -14,15 +14,16 @@ import {
   addComment,
   deletePost
 } from '../lib/community'
-import {
-  addReaction,
-  getUserReaction,
-  getPostReactions,
-  savePost,
-  unsavePost,
-  checkIfSaved
-} from '../lib/communityEnhanced'
-import { ReactionPicker, ReactionSummary, PostActionBar } from '../components/community/EnhancedPostComponents'
+// Temporarily disabled enhanced components
+// import {
+//   addReaction,
+//   getUserReaction,
+//   getPostReactions,
+//   savePost,
+//   unsavePost,
+//   checkIfSaved
+// } from '../lib/communityEnhanced'
+// import { ReactionPicker, ReactionSummary, PostActionBar } from '../components/community/EnhancedPostComponents'
 import { getProfile } from '../lib/supabase'
 import {
   MessageCircle,
@@ -218,66 +219,31 @@ const EMOJI_LIST = [
 // FEED TAB
 // ============================================
 const FeedTab = ({ posts, user, userProfile, isDark, toast, onRefresh }) => {
-  const [userReactions, setUserReactions] = useState({})
-  const [postReactions, setPostReactions] = useState({})
-  const [savedPosts, setSavedPosts] = useState({})
+  const [likedPosts, setLikedPosts] = useState({})
   const [expandedComments, setExpandedComments] = useState(null)
   const [comments, setComments] = useState({})
   const [newComment, setNewComment] = useState('')
   const [loadingComment, setLoadingComment] = useState(false)
 
   useEffect(() => {
-    // Load reactions and saves for all posts
-    const loadPostData = async () => {
-      const reactions = {}
-      const userReacts = {}
-      const saves = {}
-      
+    // Check which posts user has liked
+    const checkLikes = async () => {
+      const liked = {}
       for (const post of posts) {
-        // Get reaction counts
-        const reactionData = await getPostReactions(post.id)
-        reactions[post.id] = reactionData.reactions
-        
-        // Get user's reaction
-        const userReaction = await getUserReaction(post.id, user.id)
-        userReacts[post.id] = userReaction
-        
-        // Check if saved
-        const isSaved = await checkIfSaved(post.id, user.id)
-        saves[post.id] = isSaved
+        liked[post.id] = await checkUserLiked(post.id, user.id)
       }
-      
-      setPostReactions(reactions)
-      setUserReactions(userReacts)
-      setSavedPosts(saves)
+      setLikedPosts(liked)
     }
-    
-    if (posts.length > 0) {
-      loadPostData()
-    }
+    checkLikes()
   }, [posts, user.id])
 
-  const handleReactionChange = async (postId) => {
-    // Reload reactions for this post
-    const reactionData = await getPostReactions(postId)
-    setPostReactions({ ...postReactions, [postId]: reactionData.reactions })
-    
-    const userReaction = await getUserReaction(postId, user.id)
-    setUserReactions({ ...userReactions, [postId]: userReaction })
-    
-    onRefresh()
-  }
-
-  const handleSaveToggle = async (postId) => {
-    const isSaved = savedPosts[postId]
-    if (isSaved) {
-      await unsavePost(postId, user.id)
-      setSavedPosts({ ...savedPosts, [postId]: false })
-      toast('Post removed from saved', 'info')
-    } else {
-      await savePost(postId, user.id)
-      setSavedPosts({ ...savedPosts, [postId]: true })
-      toast('Post saved!', 'success')
+  const handleLike = async (postId) => {
+    try {
+      const liked = await toggleLike(postId, user.id)
+      setLikedPosts(prev => ({ ...prev, [postId]: liked }))
+      onRefresh()
+    } catch (error) {
+      toast.error('Failed to like post')
     }
   }
 
@@ -469,26 +435,29 @@ const FeedTab = ({ posts, user, userProfile, isDark, toast, onRefresh }) => {
                 </a>
               )}
 
-              {/* Reactions Summary */}
-              {postReactions[post.id] && (
-                <ReactionSummary 
-                  reactions={postReactions[post.id]} 
-                  isDark={isDark} 
-                />
-              )}
-
               {/* Actions */}
-              <PostActionBar
-                postId={post.id}
-                userId={user.id}
-                currentReaction={userReactions[post.id]}
-                onReact={() => handleReactionChange(post.id)}
-                onComment={() => loadComments(post.id)}
-                onSave={() => handleSaveToggle(post.id)}
-                isSaved={savedPosts[post.id]}
-                commentsCount={post.comments_count}
-                isDark={isDark}
-              />
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => handleLike(post.id)}
+                  className={`flex items-center gap-2 text-sm ${
+                    likedPosts[post.id] 
+                      ? 'text-red-500' 
+                      : isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}
+                >
+                  <Heart className={`w-5 h-5 ${likedPosts[post.id] ? 'fill-red-500' : ''}`} />
+                  {post.likes_count}
+                </button>
+                <button
+                  onClick={() => loadComments(post.id)}
+                  className={`flex items-center gap-2 text-sm ${
+                    isDark ? 'text-gray-400' : 'text-gray-500'
+                  }`}
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  {post.comments_count}
+                </button>
+              </div>
 
               {/* Comments Section */}
               {expandedComments === post.id && (

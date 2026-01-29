@@ -3,7 +3,7 @@ import {
   Heart, ThumbsUp, Laugh, MessageCircle, Share2, Bookmark, 
   Edit2, MoreHorizontal, User 
 } from 'lucide-react'
-import { useTheme } from '../contexts/ThemeContext'
+import { useTheme } from '../../contexts/ThemeContext'
 import { 
   addReaction, 
   getPostReactions, 
@@ -12,7 +12,7 @@ import {
   checkIfSaved,
   sharePost,
   REACTION_TYPES 
-} from '../lib/communityEnhanced'
+} from '../../lib/communityEnhanced'
 
 // =============================================
 // REACTION PICKER - Facebook-like hover picker

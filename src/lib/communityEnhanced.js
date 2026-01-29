@@ -16,7 +16,7 @@ export const REACTION_TYPES = {
 export const addReaction = async (postId, userId, reactionType) => {
   // Check if user already reacted
   const { data: existing } = await supabase
-    .from('community_post_likes')
+    .from('post_likes')
     .select('id, reaction')
     .eq('post_id', postId)
     .eq('user_id', userId)
@@ -26,13 +26,13 @@ export const addReaction = async (postId, userId, reactionType) => {
     // Update reaction if different, otherwise remove
     if (existing.reaction === reactionType) {
       await supabase
-        .from('community_post_likes')
+        .from('post_likes')
         .delete()
         .eq('id', existing.id)
       return null
     } else {
       const { data, error } = await supabase
-        .from('community_post_likes')
+        .from('post_likes')
         .update({ reaction: reactionType })
         .eq('id', existing.id)
         .select()
@@ -43,7 +43,7 @@ export const addReaction = async (postId, userId, reactionType) => {
   } else {
     // Add new reaction
     const { data, error } = await supabase
-      .from('community_post_likes')
+      .from('post_likes')
       .insert({
         post_id: postId,
         user_id: userId,
@@ -58,7 +58,7 @@ export const addReaction = async (postId, userId, reactionType) => {
 
 export const getPostReactions = async (postId) => {
   const { data, error } = await supabase
-    .from('community_post_likes')
+    .from('post_likes')
     .select('reaction, user_id')
     .eq('post_id', postId)
 
@@ -78,7 +78,7 @@ export const getPostReactions = async (postId) => {
 
 export const getUserReaction = async (postId, userId) => {
   const { data, error } = await supabase
-    .from('community_post_likes')
+    .from('post_likes')
     .select('reaction')
     .eq('post_id', postId)
     .eq('user_id', userId)
@@ -96,7 +96,7 @@ export const getUserReaction = async (postId, userId) => {
 
 export const addCommentReply = async (postId, parentCommentId, userId, content) => {
   const { data, error } = await supabase
-    .from('community_post_comments')
+    .from('post_comments')
     .insert({
       post_id: postId,
       user_id: userId,
@@ -112,7 +112,7 @@ export const addCommentReply = async (postId, parentCommentId, userId, content) 
 
 export const getCommentReplies = async (commentId) => {
   const { data: replies, error } = await supabase
-    .from('community_post_comments')
+    .from('post_comments')
     .select('*')
     .eq('parent_comment_id', commentId)
     .order('created_at', { ascending: true })
@@ -595,3 +595,4 @@ export const editPost = async (postId, content, images = null) => {
   if (error) throw error
   return data
 }
+
