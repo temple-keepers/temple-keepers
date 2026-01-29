@@ -441,3 +441,15 @@ html.dark body {
 .animate-slide-up {
   animation: slide-up 0.4s ease-out forwards;
 }
+
+/* Hide scrollbar but keep scrollability */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
