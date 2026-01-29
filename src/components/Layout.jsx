@@ -38,14 +38,22 @@ const Layout = ({ children }) => {
   }
 
   const navigation = [
+    // Core Features
     { name: 'Dashboard', href: '/dashboard', icon: Home, locked: false },
     { name: 'Devotionals', href: '/devotionals', icon: BookOpen, locked: false },
-    { name: 'AI Recipes', href: '/recipes', icon: ChefHat, locked: false },
     { name: 'Challenges', href: '/challenges', icon: Trophy, locked: false },
-    { name: 'Community', href: '/community', icon: Users, locked: false },
-    { name: 'Members', href: '/members', icon: User, locked: hasAccess ? !hasAccess('members_directory') : true },
+    
+    // Nutrition & Health
+    { name: 'AI Recipes', href: '/recipes', icon: ChefHat, locked: false },
+    { name: 'Recipe Library', href: '/recipe-library', icon: Library, locked: false },
     { name: 'Meal Planner', href: '/meal-planner', icon: CalendarDays, locked: hasAccess ? !hasAccess('meal_planner') : true },
     { name: 'Water Tracker', href: '/water', icon: Droplets, locked: hasAccess ? !hasAccess('water_tracker') : true },
+    
+    // Community & Social
+    { name: 'Community', href: '/community', icon: Users, locked: false },
+    { name: 'Members', href: '/members', icon: Heart, locked: hasAccess ? !hasAccess('members_directory') : true },
+    
+    // Personal
     { name: 'Profile', href: '/profile', icon: User, locked: false },
   ]
 
