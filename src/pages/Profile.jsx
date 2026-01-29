@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
-import { updateProfile } from '../lib/supabase'
+import { updateProfile, supabase } from '../lib/supabase'
 import CookieSettingsButton from '../components/CookieSettingsButton'
 import { useToast } from '../contexts/ToastContext'
 import { useSubscription } from '../contexts/SubscriptionContext'
@@ -17,7 +17,12 @@ import {
   Bell,
   Shield,
   Target,
-  Leaf
+  Leaf,
+  Camera,
+  Upload,
+  MapPin,
+  Globe,
+  Calendar
 } from 'lucide-react'
 
 const Profile = () => {
@@ -25,9 +30,15 @@ const Profile = () => {
   const { isDark } = useTheme()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [formData, setFormData] = useState({
     full_name: '',
+    avatar_url: '',
     bio: '',
+    date_of_birth: '',
+    city: '',
+    country: '',
+    timezone: '',
     health_goals: [],
     dietary_preferences: [],
     notification_preferences: {
@@ -69,7 +80,12 @@ const Profile = () => {
     if (profile) {
       setFormData({
         full_name: profile.full_name || '',
+        avatar_url: profile.avatar_url || '',
         bio: profile.bio || '',
+        date_of_birth: profile.date_of_birth || '',
+        city: profile.city || '',
+        country: profile.country || '',
+        timezone: profile.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
         health_goals: profile.health_goals || [],
         dietary_preferences: profile.dietary_preferences || [],
         notification_preferences: profile.notification_preferences || {
@@ -110,6 +126,51 @@ const Profile = () => {
       }
     }))
     setSaved(false)
+  }
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      // Upload to Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath)
+
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }))
+      setSaved(false)
+      toast.success('Avatar uploaded! Click Save to update your profile.')
+    } catch (error) {
+      console.error('Avatar upload error:', error)
+      toast.error('Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
   }
 
   const handleSave = async () => {
@@ -183,19 +244,87 @@ const handleManageBilling = async () => {
           Personal Information
         </h2>
         
-        <div className="space-y-4">
-          <div>
-            <label className="form-label">Full Name</label>
-            <input
-              type="text"
-              value={formData.full_name}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, full_name: e.target.value }))
-                setSaved(false)
-              }}
-              className="glass-input w-full"
-              placeholder="Enter your full name"
-            />
+        <div className="space-y-6">
+          {/* Avatar Upload */}
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative group">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-temple-purple to-temple-gold p-1">
+                <div className={`w-full h-full rounded-full overflow-hidden ${
+                  isDark ? 'bg-gray-800' : 'bg-white'
+                }`}>
+                  {formData.avatar_url ? (
+                    <img 
+                      src={formData.avatar_url} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="w-12 h-12 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <label className="absolute bottom-0 right-0 p-2 rounded-full bg-temple-purple text-white cursor-pointer hover:bg-temple-purple-dark transition-colors shadow-lg">
+                {uploadingAvatar ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleAvatarUpload}
+                  disabled={uploadingAvatar}
+                  className="hidden" 
+                />
+              </label>
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h3 className={`font-semibold mb-1 ${
+                isDark ? 'text-white' : 'text-gray-800'
+              }`}>
+                Profile Photo
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Click the camera icon to upload a new photo (max 5MB)
+              </p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="form-label">Full Name</label>
+              <input
+                type="text"
+                value={formData.full_name}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, full_name: e.target.value }))
+                  setSaved(false)
+                }}
+                className="glass-input w-full"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div>
+              <label className="form-label">
+                Date of Birth
+                <span className="ml-2 text-xs text-gray-400">(Private - not shown publicly)</span>
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, date_of_birth: e.target.value }))
+                    setSaved(false)
+                  }}
+                  className="glass-input w-full pl-12"
+                />
+              </div>
+            </div>
           </div>
           
           <div>
@@ -212,6 +341,45 @@ const handleManageBilling = async () => {
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Email cannot be changed
             </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="form-label">City</label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, city: e.target.value }))
+                    setSaved(false)
+                  }}
+                  className="glass-input w-full pl-12"
+                  placeholder="Your city"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="form-label">Country</label>
+              <div className="relative">
+                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, country: e.target.value }))
+                    setSaved(false)
+                  }}
+                  className="glass-input w-full pl-12"
+                  placeholder="Your country"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Helps identify your timezone for community features
+              </p>
+            </div>
           </div>
 
           <div>

@@ -440,8 +440,8 @@ export const getPodDetails = async (podId) => {
   }
 }
 
-export const createPod = async (userId, name, description, focus, isPrivate = false) => {
-  console.log('🔵 Creating pod:', { userId, name, description, focus, isPrivate })
+export const createPod = async (userId, name, description, focus, isPrivate = false, imageUrl = null) => {
+  console.log('🔵 Creating pod:', { userId, name, description, focus, isPrivate, imageUrl })
   const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
   const podData = {
@@ -450,6 +450,7 @@ export const createPod = async (userId, name, description, focus, isPrivate = fa
     focus,
     is_private: isPrivate,
     invite_code: inviteCode,
+    image_url: imageUrl,
     created_by: userId
   }
   

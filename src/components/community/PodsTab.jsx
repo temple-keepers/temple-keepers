@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 import { 
   getPublicPods, 
   getMyPods, 
@@ -23,7 +24,10 @@ import {
   Sparkles,
   Dumbbell,
   Brain,
-  Check
+  Check,
+  Camera,
+  Upload,
+  Loader2
 } from 'lucide-react'
 
 const PodsTab = ({ user, isDark, toast, isAdmin = false }) => {
@@ -276,6 +280,8 @@ const CreatePodModal = ({ user, isDark, toast, onClose, onCreated }) => {
   const [focus, setFocus] = useState('general')
   const [isPrivate, setIsPrivate] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   const focuses = [
     { id: 'general', label: 'General' },
@@ -286,6 +292,46 @@ const CreatePodModal = ({ user, isDark, toast, onClose, onCreated }) => {
     { id: 'nutrition', label: 'Nutrition' }
   ]
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB')
+      return
+    }
+
+    setUploadingImage(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
+      const filePath = `pods/${fileName}`
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('profiles')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profiles')
+        .getPublicUrl(filePath)
+
+      setImageUrl(publicUrl)
+      toast.success('Image uploaded!')
+    } catch (error) {
+      console.error('Image upload error:', error)
+      toast.error('Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   const handleCreate = async () => {
     if (!name.trim()) {
       toast.error('Please enter a pod name')
@@ -294,7 +340,7 @@ const CreatePodModal = ({ user, isDark, toast, onClose, onCreated }) => {
     setCreating(true)
     try {
       console.log('🟢 Starting pod creation from frontend')
-      await createPod(user.id, name, description, focus, isPrivate)
+      const podId = await createPod(user.id, name, description, focus, isPrivate, imageUrl)
       toast.success('Pod created! 🎉')
       onCreated()
     } catch (error) {
@@ -324,6 +370,36 @@ const CreatePodModal = ({ user, isDark, toast, onClose, onCreated }) => {
           <button onClick={onClose} className="p-2">
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Pod Image Upload */}
+        <div className="mb-4">
+          <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+            Pod Image (optional)
+          </label>
+          <div className="flex items-center gap-4">
+            {imageUrl && (
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-temple-purple to-temple-gold p-0.5">
+                <img src={imageUrl} alt="Pod" className="w-full h-full object-cover rounded-xl" />
+              </div>
+            )}
+            <label className={`flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition-colors ${
+              isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}>
+              {uploadingImage ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
+              ) : (
+                <><Upload className="w-4 h-4" /> {imageUrl ? 'Change Image' : 'Upload Image'}</>
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+                className="hidden" 
+              />
+            </label>
+          </div>
         </div>
 
         {/* Name */}
