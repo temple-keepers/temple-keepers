@@ -14,6 +14,7 @@ import {
   calculateCurrentDay
 } from '../lib/challenges'
 import { incrementUserStat } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { 
   ArrowLeft, 
   Calendar, 
@@ -132,23 +133,45 @@ const ChallengeDetail = () => {
       const progressData = await getDayProgress(user.id, userChallenge.id)
       setDayProgress(progressData)
 
+      // Calculate daily points earned (25 per day + bonus on completion)
+      const currentPoints = (userChallenge.points_earned || 0) + 25
+      
+      // Update user challenge with daily points
+      const { error: pointsError } = await supabase
+        .from('user_challenges')
+        .update({ points_earned: currentPoints })
+        .eq('id', userChallenge.id)
+      
+      if (pointsError) {
+        console.error('Error updating points:', pointsError)
+      }
+
       // Update local user challenge state
       setUserChallenge(prev => ({
         ...prev,
         completed_days: day.day_number,
-        current_day: day.day_number + 1
+        current_day: day.day_number + 1,
+        points_earned: currentPoints
       }))
 
-      // Add points
+      // Add points to user's overall points
       await incrementUserStat(user.id, 'points', 25)
 
       toast.success(`Day ${day.day_number} completed! +25 points 🎉`)
 
       // Check if challenge is complete
       if (day.day_number === challenge.duration_days) {
+        const finalPoints = currentPoints + challenge.points_reward
         setShowCompleteModal(true)
-        await completeChallenge(userChallenge.id, challenge.points_reward)
+        await completeChallenge(userChallenge.id, finalPoints)
         await incrementUserStat(user.id, 'points', challenge.points_reward)
+        
+        // Update local state with final points
+        setUserChallenge(prev => ({
+          ...prev,
+          points_earned: finalPoints,
+          status: 'completed'
+        }))
       } else {
         // Expand next day
         setExpandedDay(day.day_number + 1)
