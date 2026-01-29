@@ -12,19 +12,15 @@ import {
   checkUserLiked,
   getPostComments,
   addComment,
-  deletePost
+  deletePost,
+  REACTION_TYPES,
+  addReaction,
+  getUserReaction,
+  getPostReactions,
+  savePost,
+  unsavePost,
+  checkIfSaved
 } from '../lib/community'
-// Enhanced components temporarily disabled due to build issues
-// Will be integrated after resolving module resolution
-// import {
-//   addReaction,
-//   getUserReaction,
-//   getPostReactions,
-//   savePost,
-//   unsavePost,
-//   checkIfSaved
-// } from '../lib/communityEnhanced'
-// import { ReactionPicker, ReactionSummary, PostActionBar } from '../components/community/EnhancedPostComponents'
 import { getProfile } from '../lib/supabase'
 import {
   MessageCircle,
@@ -42,10 +38,12 @@ import {
   Users,
   Trophy,
   HandHeart,
+  ThumbsUp,
+  Bookmark,
+  MessageSquare,
   ChevronDown,
   User,
   Clock,
-  MessageSquare,
   Image,
   Smile,
   Link2,
@@ -220,31 +218,63 @@ const EMOJI_LIST = [
 // FEED TAB
 // ============================================
 const FeedTab = ({ posts, user, userProfile, isDark, toast, onRefresh }) => {
-  const [likedPosts, setLikedPosts] = useState({})
+  const [userReactions, setUserReactions] = useState({})
+  const [postReactions, setPostReactions] = useState({})
+  const [savedPosts, setSavedPosts] = useState({})
+  const [showPicker, setShowPicker] = useState(null)
   const [expandedComments, setExpandedComments] = useState(null)
   const [comments, setComments] = useState({})
   const [newComment, setNewComment] = useState('')
   const [loadingComment, setLoadingComment] = useState(false)
 
   useEffect(() => {
-    // Check which posts user has liked
-    const checkLikes = async () => {
-      const liked = {}
+    // Load reactions and saves for all posts
+    const loadPostData = async () => {
+      const reactions = {}
+      const userReacts = {}
+      const saves = {}
+      
       for (const post of posts) {
-        liked[post.id] = await checkUserLiked(post.id, user.id)
+        const reactionData = await getPostReactions(post.id)
+        reactions[post.id] = reactionData.reactions
+        
+        const userReaction = await getUserReaction(post.id, user.id)
+        userReacts[post.id] = userReaction
+        
+        const isSaved = await checkIfSaved(post.id, user.id)
+        saves[post.id] = isSaved
       }
-      setLikedPosts(liked)
+      
+      setPostReactions(reactions)
+      setUserReactions(userReacts)
+      setSavedPosts(saves)
     }
-    checkLikes()
+    
+    if (posts.length > 0) {
+      loadPostData()
+    }
   }, [posts, user.id])
 
-  const handleLike = async (postId) => {
-    try {
-      const liked = await toggleLike(postId, user.id)
-      setLikedPosts(prev => ({ ...prev, [postId]: liked }))
-      onRefresh()
-    } catch (error) {
-      toast.error('Failed to like post')
+  const handleReaction = async (postId, reactionType) => {
+    await addReaction(postId, user.id, reactionType)
+    const reactionData = await getPostReactions(postId)
+    setPostReactions({ ...postReactions, [postId]: reactionData.reactions })
+    const userReaction = await getUserReaction(postId, user.id)
+    setUserReactions({ ...userReactions, [postId]: userReaction })
+    setShowPicker(null)
+    onRefresh()
+  }
+
+  const handleSaveToggle = async (postId) => {
+    const isSaved = savedPosts[postId]
+    if (isSaved) {
+      await unsavePost(postId, user.id)
+      setSavedPosts({ ...savedPosts, [postId]: false })
+      toast('Removed from saved', 'info')
+    } else {
+      await savePost(postId, user.id)
+      setSavedPosts({ ...savedPosts, [postId]: true })
+      toast('Post saved!', 'success')
     }
   }
 
@@ -436,27 +466,100 @@ const FeedTab = ({ posts, user, userProfile, isDark, toast, onRefresh }) => {
                 </a>
               )}
 
+              {/* Reaction Summary */}
+              {postReactions[post.id] && Object.keys(postReactions[post.id]).length > 0 && (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex -space-x-1">
+                    {Object.entries(postReactions[post.id])
+                      .sort(([, a], [, b]) => b - a)
+                      .slice(0, 3)
+                      .map(([type]) => (
+                        <span 
+                          key={type}
+                          className={`inline-flex items-center justify-center w-6 h-6 rounded-full border-2 ${
+                            isDark ? 'bg-gray-800 border-gray-800' : 'bg-white border-white'
+                          }`}
+                          title={REACTION_TYPES[type]?.label}
+                        >
+                          <span className="text-sm">{REACTION_TYPES[type]?.emoji}</span>
+                        </span>
+                      ))}
+                  </div>
+                  <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {Object.values(postReactions[post.id]).reduce((sum, count) => sum + count, 0)}
+                  </span>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => handleLike(post.id)}
-                  className={`flex items-center gap-2 text-sm ${
-                    likedPosts[post.id] 
-                      ? 'text-red-500' 
-                      : isDark ? 'text-gray-400' : 'text-gray-500'
-                  }`}
+                {/* Reaction Picker */}
+                <div 
+                  className="relative"
+                  onMouseEnter={() => setShowPicker(post.id)}
+                  onMouseLeave={() => setShowPicker(null)}
                 >
-                  <Heart className={`w-5 h-5 ${likedPosts[post.id] ? 'fill-red-500' : ''}`} />
-                  {post.likes_count}
-                </button>
+                  <button
+                    onClick={() => handleReaction(post.id, 'like')}
+                    className={`flex items-center gap-2 text-sm transition-colors ${
+                      userReactions[post.id]
+                        ? 'text-purple-600 font-medium' 
+                        : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {userReactions[post.id] ? (
+                      <span className="text-lg">{REACTION_TYPES[userReactions[post.id]]?.emoji}</span>
+                    ) : (
+                      <ThumbsUp className="w-5 h-5" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {userReactions[post.id] ? REACTION_TYPES[userReactions[post.id]]?.label : 'React'}
+                    </span>
+                  </button>
+
+                  {/* Reaction Picker Popup */}
+                  {showPicker === post.id && (
+                    <div 
+                      className={`absolute bottom-full left-0 mb-2 flex items-center gap-2 p-3 rounded-full shadow-lg border backdrop-blur-sm z-20 ${
+                        isDark ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95 border-gray-200'
+                      }`}
+                    >
+                      {Object.entries(REACTION_TYPES).map(([type, { emoji, label }]) => (
+                        <button
+                          key={type}
+                          onClick={() => handleReaction(post.id, type)}
+                          className="transition-transform hover:scale-125"
+                          title={label}
+                        >
+                          <span className="text-2xl">{emoji}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={() => loadComments(post.id)}
                   className={`flex items-center gap-2 text-sm ${
-                    isDark ? 'text-gray-400' : 'text-gray-500'
+                    isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
                   <MessageSquare className="w-5 h-5" />
-                  {post.comments_count}
+                  <span className="hidden sm:inline">Comment</span>
+                </button>
+
+                <button
+                  onClick={() => handleSaveToggle(post.id)}
+                  className={`flex items-center gap-2 text-sm ${
+                    savedPosts[post.id]
+                      ? 'text-purple-600'
+                      : isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Bookmark className={`w-5 h-5 ${savedPosts[post.id] ? 'fill-purple-600' : ''}`} />
+                  <span className="hidden sm:inline">
+                    {savedPosts[post.id] ? 'Saved' : 'Save'}
+                  </span>
                 </button>
               </div>
 

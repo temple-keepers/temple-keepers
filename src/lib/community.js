@@ -615,3 +615,136 @@ export const getPublicProfile = async (userId) => {
   }
   return data
 }
+
+// ============================================
+// ENHANCED REACTIONS (Facebook-style)
+// ============================================
+
+export const REACTION_TYPES = {
+  like: { emoji: '👍', label: 'Like' },
+  love: { emoji: '❤️', label: 'Love' },
+  pray: { emoji: '🙏', label: 'Pray' },
+  celebrate: { emoji: '🎉', label: 'Celebrate' },
+  care: { emoji: '🤗', label: 'Care' },
+  insightful: { emoji: '💡', label: 'Insightful' }
+}
+
+export const addReaction = async (postId, userId, reactionType) => {
+  // Check if user already reacted
+  const { data: existing } = await supabase
+    .from('post_likes')
+    .select('id, reaction')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .single()
+
+  if (existing) {
+    // Update reaction if different, otherwise remove
+    if (existing.reaction === reactionType) {
+      await supabase
+        .from('post_likes')
+        .delete()
+        .eq('id', existing.id)
+      return null
+    } else {
+      const { data, error } = await supabase
+        .from('post_likes')
+        .update({ reaction: reactionType })
+        .eq('id', existing.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    }
+  } else {
+    // Add new reaction
+    const { data, error } = await supabase
+      .from('post_likes')
+      .insert({
+        post_id: postId,
+        user_id: userId,
+        reaction: reactionType
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+}
+
+export const getPostReactions = async (postId) => {
+  const { data, error } = await supabase
+    .from('post_likes')
+    .select('reaction, user_id')
+    .eq('post_id', postId)
+
+  if (error) {
+    console.error('Error fetching reactions:', error)
+    return { reactions: {}, totalCount: 0 }
+  }
+
+  // Count reactions by type
+  const reactionCounts = {}
+  data.forEach(r => {
+    reactionCounts[r.reaction] = (reactionCounts[r.reaction] || 0) + 1
+  })
+
+  return { reactions: reactionCounts, totalCount: data.length }
+}
+
+export const getUserReaction = async (postId, userId) => {
+  const { data, error } = await supabase
+    .from('post_likes')
+    .select('reaction')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching user reaction:', error)
+  }
+  return data?.reaction || null
+}
+
+// ============================================
+// POST BOOKMARKS
+// ============================================
+
+export const savePost = async (postId, userId) => {
+  const { data, error } = await supabase
+    .from('community_post_saves')
+    .insert({
+      post_id: postId,
+      user_id: userId
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const unsavePost = async (postId, userId) => {
+  const { error } = await supabase
+    .from('community_post_saves')
+    .delete()
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+  return true
+}
+
+export const checkIfSaved = async (postId, userId) => {
+  const { data, error } = await supabase
+    .from('community_post_saves')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error checking if saved:', error)
+  }
+  return !!data
+}
