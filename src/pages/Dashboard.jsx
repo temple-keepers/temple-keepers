@@ -109,28 +109,32 @@ const Dashboard = () => {
     value: stats?.streak_days || 0,
     icon: Flame,
     iconColor: 'text-orange-500',
-    containerClass: 'icon-container-orange'
+    containerClass: 'icon-container-orange',
+    link: '/challenges'
   },
   {
     label: 'Devotionals',
     value: stats?.devotionals_completed || 0,
     icon: BookOpen,
     iconColor: isDark ? 'text-temple-gold' : 'text-temple-purple',
-    containerClass: 'icon-container-purple'
+    containerClass: 'icon-container-purple',
+    link: '/devotionals'
   },
   {
     label: 'Recipes Saved',
     value: stats?.recipes_saved || 0,
     icon: ChefHat,
     iconColor: 'text-green-500',
-    containerClass: 'icon-container-green'
+    containerClass: 'icon-container-green',
+    link: '/recipes'
   },
   {
     label: 'Total Points',
     value: stats?.total_points || 0,
     icon: Trophy,
     iconColor: 'text-temple-gold',
-    containerClass: 'icon-container-gold'
+    containerClass: 'icon-container-gold',
+    link: '/challenges'
   }
 ]
 
@@ -196,7 +200,11 @@ const Dashboard = () => {
   {userStats.map((stat, index) => {
     const Icon = stat.icon
     return (
-      <div key={index} className="stat-card group text-center">
+      <Link
+        key={index}
+        to={stat.link}
+        className="stat-card group text-center cursor-pointer hover:scale-105 transition-transform"
+      >
         <div className={`icon-container ${stat.containerClass} mb-4 group-hover:scale-110 transition-transform duration-300 mx-auto`}>
           <Icon className={`w-6 h-6 ${stat.iconColor}`} />
         </div>
@@ -206,7 +214,7 @@ const Dashboard = () => {
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {stat.label}
         </p>
-      </div>
+      </Link>
     )
   })}
 </div>

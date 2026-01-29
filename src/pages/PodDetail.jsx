@@ -100,11 +100,14 @@ const PodDetail = () => {
 
   const handleReaction = async (messageId, reactionType) => {
     try {
+      console.log('Adding reaction:', { messageId, userId: user.id, reactionType })
       await addPodMessageReaction(messageId, user.id, reactionType)
       setShowReactionPicker(null)
-      loadPod() // Reload to get updated reactions
+      await loadPod() // Reload to get updated reactions
+      toast.success('Reaction added!')
     } catch (error) {
-      toast.error('Failed to add reaction')
+      console.error('Reaction error:', error)
+      toast.error('Failed to add reaction: ' + (error.message || 'Unknown error'))
     }
   }
 

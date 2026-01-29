@@ -232,12 +232,12 @@ const Recipes = () => {
 
   const handlePublishRecipe = async () => {
     if (!user) {
-      alert('You must be logged in to publish recipes')
+      toast.error('You must be logged in to publish recipes')
       return
     }
 
     if (!recipe) {
-      alert('Generate a recipe first')
+      toast.error('Generate a recipe first')
       return
     }
 
@@ -252,10 +252,10 @@ const Recipes = () => {
       
       await publishRecipe(user.id, recipeToPublish)
       setPublished(true)
-      alert('Recipe submitted for approval! Once approved, it will appear in the recipe library.')
+      toast.success('Recipe submitted for approval! Once approved, it will appear in the recipe library.')
     } catch (error) {
       console.error('❌ Failed to publish recipe:', error)
-      alert('Failed to publish recipe: ' + error.message)
+      toast.error('Failed to publish recipe: ' + error.message)
     }
     setPublishing(false)
   }

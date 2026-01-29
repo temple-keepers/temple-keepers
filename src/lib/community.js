@@ -754,39 +754,52 @@ export const checkIfSaved = async (postId, userId) => {
 // ============================================
 
 export const addPodMessageReaction = async (messageId, userId, reactionType) => {
-  // Store reactions in the pod_messages table as JSONB
-  const { data: message } = await supabase
-    .from('pod_messages')
-    .select('reactions')
-    .eq('id', messageId)
-    .single()
+  try {
+    // Store reactions in the pod_messages table as JSONB
+    const { data: message, error: fetchError } = await supabase
+      .from('pod_messages')
+      .select('reactions')
+      .eq('id', messageId)
+      .single()
 
-  const reactions = message?.reactions || {}
-  const userReactions = reactions[userId] || []
-
-  // Toggle reaction
-  if (userReactions.includes(reactionType)) {
-    // Remove reaction
-    const updated = userReactions.filter(r => r !== reactionType)
-    if (updated.length === 0) {
-      delete reactions[userId]
-    } else {
-      reactions[userId] = updated
+    if (fetchError) {
+      console.error('Error fetching message:', fetchError)
+      throw fetchError
     }
-  } else {
-    // Add reaction
-    reactions[userId] = [...userReactions, reactionType]
+
+    const reactions = message?.reactions || {}
+    const userReactions = reactions[userId] || []
+
+    // Toggle reaction
+    if (userReactions.includes(reactionType)) {
+      // Remove reaction
+      const updated = userReactions.filter(r => r !== reactionType)
+      if (updated.length === 0) {
+        delete reactions[userId]
+      } else {
+        reactions[userId] = updated
+      }
+    } else {
+      // Add reaction
+      reactions[userId] = [...userReactions, reactionType]
+    }
+
+    const { data, error } = await supabase
+      .from('pod_messages')
+      .update({ reactions })
+      .eq('id', messageId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating reactions:', error)
+      throw error
+    }
+    return data
+  } catch (error) {
+    console.error('Error in addPodMessageReaction:', error)
+    throw error
   }
-
-  const { data, error } = await supabase
-    .from('pod_messages')
-    .update({ reactions })
-    .eq('id', messageId)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
 }
 
 export const getPodMessageReactions = (message) => {
