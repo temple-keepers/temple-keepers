@@ -7,7 +7,11 @@ import {
   getPodDetails, 
   getPodMessages, 
   sendPodMessage,
-  leavePod 
+  leavePod,
+  REACTION_TYPES,
+  addPodMessageReaction,
+  getPodMessageReactions,
+  getUserPodMessageReaction
 } from '../lib/community'
 import {
   ArrowLeft,
@@ -40,6 +44,7 @@ const PodDetail = () => {
   const [sending, setSending] = useState(false)
   const [copiedCode, setCopiedCode] = useState(false)
   const [messageType, setMessageType] = useState('message')
+  const [showReactionPicker, setShowReactionPicker] = useState(null)
 
   useEffect(() => {
     loadPod()
@@ -91,6 +96,16 @@ const PodDetail = () => {
     setCopiedCode(true)
     toast.success('Invite code copied!')
     setTimeout(() => setCopiedCode(false), 2000)
+  }
+
+  const handleReaction = async (messageId, reactionType) => {
+    try {
+      await addPodMessageReaction(messageId, user.id, reactionType)
+      setShowReactionPicker(null)
+      loadPod() // Reload to get updated reactions
+    } catch (error) {
+      toast.error('Failed to add reaction')
+    }
   }
 
   const messageTypeIcons = {
@@ -251,22 +266,87 @@ const PodDetail = () => {
                         {message.user?.profiles?.full_name || 'Member'}
                       </p>
                     )}
-                    <div className={`px-4 py-2 rounded-2xl border ${
-                      message.type !== 'message'
-                        ? messageTypeColors[message.type]
-                        : isOwn
-                          ? 'bg-temple-purple text-white border-temple-purple'
-                          : isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                    }`}>
-                      {message.type !== 'message' && (
-                        <div className="flex items-center gap-1 mb-1">
-                          <Icon className="w-3 h-3" />
-                          <span className="text-xs font-medium capitalize">{message.type}</span>
-                        </div>
-                      )}
-                      <p className={isOwn && message.type === 'message' ? 'text-white' : ''}>
-                        {message.content}
-                      </p>
+                    <div className="relative group">
+                      <div className={`px-4 py-2 rounded-2xl border ${
+                        message.type !== 'message'
+                          ? messageTypeColors[message.type]
+                          : isOwn
+                            ? 'bg-temple-purple text-white border-temple-purple'
+                            : isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                      }`}>
+                        {message.type !== 'message' && (
+                          <div className="flex items-center gap-1 mb-1">
+                            <Icon className="w-3 h-3" />
+                            <span className="text-xs font-medium capitalize">{message.type}</span>
+                          </div>
+                        )}
+                        <p className={isOwn && message.type === 'message' ? 'text-white' : ''}>
+                          {message.content}
+                        </p>
+                      </div>
+
+                      {/* Reaction Summary */}
+                      {(() => {
+                        const reactionSummary = getPodMessageReactions(message)
+                        const hasReactions = Object.keys(reactionSummary).length > 0
+                        return hasReactions ? (
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {Object.entries(reactionSummary).map(([type, count]) => (
+                              <button
+                                key={type}
+                                onClick={() => handleReaction(message.id, type)}
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border ${
+                                  getUserPodMessageReaction(message, user.id).includes(type)
+                                    ? isDark 
+                                      ? 'bg-purple-500/20 border-purple-500/30 text-purple-300'
+                                      : 'bg-purple-50 border-purple-200 text-purple-700'
+                                    : isDark
+                                      ? 'bg-gray-800/50 border-gray-700 text-gray-300'
+                                      : 'bg-gray-50 border-gray-200 text-gray-600'
+                                } hover:scale-105 transition-transform`}
+                              >
+                                <span>{REACTION_TYPES[type]?.emoji}</span>
+                                <span>{count}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null
+                      })()}
+
+                      {/* Add Reaction Button - Shows on Hover */}
+                      <div 
+                        className={`absolute ${isOwn ? 'left-0' : 'right-0'} top-0 opacity-0 group-hover:opacity-100 transition-opacity`}
+                        onMouseEnter={() => setShowReactionPicker(message.id)}
+                        onMouseLeave={() => setShowReactionPicker(null)}
+                      >
+                        <button
+                          className={`p-1 rounded-full ${
+                            isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
+                          }`}
+                        >
+                          <Sparkles className="w-3 h-3" />
+                        </button>
+
+                        {/* Reaction Picker Popup */}
+                        {showReactionPicker === message.id && (
+                          <div 
+                            className={`absolute ${isOwn ? 'left-0' : 'right-0'} top-full mt-1 flex gap-1 p-2 rounded-lg shadow-lg border backdrop-blur-sm z-20 ${
+                              isDark ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95 border-gray-200'
+                            }`}
+                          >
+                            {Object.entries(REACTION_TYPES).map(([type, { emoji, label }]) => (
+                              <button
+                                key={type}
+                                onClick={() => handleReaction(message.id, type)}
+                                className="transition-transform hover:scale-125 p-1"
+                                title={label}
+                              >
+                                <span className="text-lg">{emoji}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <p className={`text-xs mt-1 ${isOwn ? 'text-right' : ''} ${
                       isDark ? 'text-gray-500' : 'text-gray-400'

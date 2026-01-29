@@ -748,3 +748,61 @@ export const checkIfSaved = async (postId, userId) => {
   }
   return !!data
 }
+
+// ============================================
+// POD MESSAGE REACTIONS
+// ============================================
+
+export const addPodMessageReaction = async (messageId, userId, reactionType) => {
+  // Store reactions in the pod_messages table as JSONB
+  const { data: message } = await supabase
+    .from('pod_messages')
+    .select('reactions')
+    .eq('id', messageId)
+    .single()
+
+  const reactions = message?.reactions || {}
+  const userReactions = reactions[userId] || []
+
+  // Toggle reaction
+  if (userReactions.includes(reactionType)) {
+    // Remove reaction
+    const updated = userReactions.filter(r => r !== reactionType)
+    if (updated.length === 0) {
+      delete reactions[userId]
+    } else {
+      reactions[userId] = updated
+    }
+  } else {
+    // Add reaction
+    reactions[userId] = [...userReactions, reactionType]
+  }
+
+  const { data, error } = await supabase
+    .from('pod_messages')
+    .update({ reactions })
+    .eq('id', messageId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export const getPodMessageReactions = (message) => {
+  const reactions = message?.reactions || {}
+  const summary = {}
+  
+  Object.values(reactions).forEach(userReactions => {
+    userReactions.forEach(reaction => {
+      summary[reaction] = (summary[reaction] || 0) + 1
+    })
+  })
+  
+  return summary
+}
+
+export const getUserPodMessageReaction = (message, userId) => {
+  const reactions = message?.reactions || {}
+  return reactions[userId] || []
+}
