@@ -14,7 +14,8 @@ import {
   addComment,
   deletePost
 } from '../lib/community'
-// Temporarily disabled enhanced components
+// Enhanced components temporarily disabled due to build issues
+// Will be integrated after resolving module resolution
 // import {
 //   addReaction,
 //   getUserReaction,

@@ -3,7 +3,6 @@ import {
   Heart, ThumbsUp, Laugh, MessageCircle, Share2, Bookmark, 
   Edit2, MoreHorizontal, User 
 } from 'lucide-react'
-import { useTheme } from '../../contexts/ThemeContext'
 import { 
   addReaction, 
   getPostReactions, 

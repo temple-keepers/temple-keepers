@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, CheckCircle, Clock, Calendar, MapPin, Users, Video } from 'lucide-react'
-import { useTheme } from '../../contexts/ThemeContext'
 import {
   createPoll,
   voteOnPoll,
