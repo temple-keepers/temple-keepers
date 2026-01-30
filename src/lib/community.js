@@ -1,4 +1,6 @@
 import { supabase } from './supabase'
+import { notificationTriggers } from './notifications'
+import { getProfile } from './supabase'
 
 // ============================================
 // COMMUNITY FEED
@@ -129,6 +131,24 @@ export const toggleLike = async (postId, userId) => {
       .insert({ post_id: postId, user_id: userId })
     
     if (error) throw error
+
+    // Send notification to post owner
+    try {
+      const { data: post } = await supabase
+        .from('community_posts')
+        .select('user_id, content')
+        .eq('id', postId)
+        .single()
+
+      if (post && post.user_id !== userId) {
+        const likerProfile = await getProfile(userId)
+        const likerName = likerProfile?.full_name || 'Someone'
+        await notificationTriggers.communityLike(post.user_id, likerName, post.content)
+      }
+    } catch (err) {
+      console.error('Failed to send like notification:', err)
+    }
+
     return true // liked
   }
 }
@@ -181,6 +201,24 @@ export const addComment = async (postId, userId, content) => {
     .single()
 
   if (error) throw error
+
+  // Send notification to post owner
+  try {
+    const { data: post } = await supabase
+      .from('community_posts')
+      .select('user_id')
+      .eq('id', postId)
+      .single()
+
+    if (post && post.user_id !== userId) {
+      const commenterProfile = await getProfile(userId)
+      const commenterName = commenterProfile?.full_name || 'Someone'
+      await notificationTriggers.communityComment(post.user_id, commenterName, content)
+    }
+  } catch (err) {
+    console.error('Failed to send comment notification:', err)
+  }
+
   return data
 }
 
@@ -299,6 +337,22 @@ export const prayForRequest = async (prayerId, userId) => {
     .insert({ prayer_request_id: prayerId, user_id: userId })
 
   if (error) throw error
+
+  // Send notification to prayer request owner
+  try {
+    const { data: prayer } = await supabase
+      .from('prayer_requests')
+      .select('user_id, prayers_count')
+      .eq('id', prayerId)
+      .single()
+
+    if (prayer && prayer.user_id !== userId) {
+      await notificationTriggers.prayerReceived(prayer.user_id, (prayer.prayers_count || 0) + 1)
+    }
+  } catch (err) {
+    console.error('Failed to send prayer notification:', err)
+  }
+
   return true
 }
 
@@ -576,6 +630,33 @@ export const sendPodMessage = async (podId, userId, content, type = 'message') =
     .single()
 
   if (error) throw error
+
+  // Send notifications to other pod members
+  try {
+    const { data: members } = await supabase
+      .from('pod_members')
+      .select('user_id')
+      .eq('pod_id', podId)
+      .neq('user_id', userId)
+
+    const { data: pod } = await supabase
+      .from('pods')
+      .select('name')
+      .eq('id', podId)
+      .single()
+
+    const senderProfile = await getProfile(userId)
+    const senderName = senderProfile?.full_name || 'Someone'
+
+    if (members && pod) {
+      for (const member of members) {
+        await notificationTriggers.podMessage(member.user_id, pod.name, senderName, content)
+      }
+    }
+  } catch (err) {
+    console.error('Failed to send pod message notifications:', err)
+  }
+
   return data
 }
 

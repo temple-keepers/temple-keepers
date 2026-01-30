@@ -1,16 +1,22 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Heart } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext-minimal'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Heart, Shield } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
+import { useFormValidation } from '../hooks/useFormValidation'
+import { useErrorRecovery } from '../hooks/useErrorRecovery'
+import { useSecureForm, SecureInput, securityRules } from '../hooks/useSecureForm.jsx'
+import { rateLimiters } from '../utils/security'
+import LoadingSpinner from '../components/LoadingSpinner'
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [securityWarning, setSecurityWarning] = useState('')
   const [loading, setLoading] = useState(false)
   const { isDark, toggleTheme } = useTheme()
   
@@ -18,22 +24,91 @@ const Login = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
 
-  const handleSubmit = async (e) => {
-  e.preventDefault()
-  setLoading(true)
-  setError('')
+  // Enhanced security form validation
+  const {
+    values,
+    errors,
+    formState,
+    handleSubmit: secureHandleSubmit,
+    getFieldProps,
+    reset
+  } = useSecureForm(
+    { email: '', password: '' },
+    {
+      email: securityRules.email,
+      password: {
+        validator: (value) => {
+          if (!value) return { valid: false, error: 'Password is required' }
+          return { valid: true, value }
+        },
+        options: { required: true }
+      }
+    },
+    {
+      formType: 'login',
+      rateLimiter: rateLimiters.login,
+      identifier: typeof window !== 'undefined' ? window.location.hostname : 'unknown'
+    }
+  )
 
-  try {
-    await signIn(email, password)
-    toast.success('Welcome back! 👋')
-    navigate('/dashboard')
-  } catch (error) {
-    toast.error(error.message || 'Failed to sign in')
-    setError(error.message)
-  } finally {
-    setLoading(false)
+  // Form validation (keep existing for backward compatibility)
+  const { validateInput, getFieldError } = useFormValidation()
+  
+  // Error recovery for sign in
+  const { execute: executeSignIn, isLoading: signInLoading } = useErrorRecovery({
+    onError: (error) => {
+      toast.error(error.message || 'Failed to sign in')
+      setError(error.message)
+    }
+  })
+
+  const handleSubmit = async (sanitizedData) => {
+    setError('')
+    setSecurityWarning('')
+
+    await executeSignIn(async () => {
+      await signIn(sanitizedData.email, sanitizedData.password)
+      toast.success('Welcome back! 👋')
+      
+      // Track successful login
+      if (window.gtag) {
+        window.gtag('event', 'login', {
+          method: 'email',
+          security_enhanced: true
+        })
+      }
+      
+      navigate('/dashboard')
+    })
   }
-}
+
+  // Legacy form handler for existing form elements
+  const legacyHandleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+
+    // Rate limiting check
+    const rateLimitResult = rateLimiters.login.isAllowed('legacy_login')
+    if (!rateLimitResult.allowed) {
+      setSecurityWarning('Too many login attempts. Please wait before trying again.')
+      return
+    }
+
+    // Validate form
+    const emailError = validateInput(email, { required: true, type: 'email' }, 'Email')
+    const passwordError = validateInput(password, { required: true, minLength: 1 }, 'Password')
+    
+    if (emailError || passwordError) {
+      setError(emailError || passwordError)
+      return
+    }
+
+    await executeSignIn(async () => {
+      await signIn(email, password)
+      toast.success('Welcome back! 👋')
+      navigate('/dashboard')
+    })
+  }
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${
   isDark 
@@ -84,7 +159,37 @@ const Login = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {securityWarning && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start">
+                <Shield className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-medium text-yellow-800 mb-1">
+                    Security Notice
+                  </h3>
+                  <p className="text-sm text-yellow-700">{securityWarning}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {formState.submitAttempts > 2 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+              <div className="flex items-start">
+                <Shield className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-medium text-blue-800 mb-1">
+                    Having trouble signing in?
+                  </h3>
+                  <p className="text-sm text-blue-700">
+                    Consider using "Forgot Password" if you can't remember your credentials.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={legacyHandleSubmit} className="space-y-6">
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <div className="relative">
@@ -133,14 +238,11 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={signInLoading}
               className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <>
-                  <div className="spinner w-5 h-5 border-2 border-white/30 border-t-white" />
-                  <span>Signing in...</span>
-                </>
+              {signInLoading ? (
+                <LoadingSpinner variant="minimal" />
               ) : (
                 <>
                   <span>Sign In</span>

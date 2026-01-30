@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug Helper</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .key { font-weight: bold; color: blue; }
+        .value { color: green; margin-left: 20px; white-space: pre-wrap; }
+        .clear-btn { background: red; color: white; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h2>Authentication Storage Debug</h2>
+    <button onclick="showStorage()">Inspect Storage</button>
+    <button onclick="clearAuthStorage()" class="clear-btn">Clear Auth Storage</button>
+    <div id="output"></div>
+
+    <script>
+        function showStorage() {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+            
+            console.log('=== LOCALSTORAGE INSPECTION ===');
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                
+                // Show auth-related keys
+                if (key.startsWith('sb-') || key.includes('auth') || key.includes('supabase')) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<span class="key">${key}:</span><div class="value">${value}</div>`;
+                    output.appendChild(div);
+                    
+                    console.log(`${key}:`, value);
+                    
+                    // Try to parse JSON values
+                    try {
+                        const parsed = JSON.parse(value);
+                        console.log(`${key} (parsed):`, parsed);
+                        
+                        if (parsed.user) {
+                            console.log(`  User ID: ${parsed.user.id}`);
+                            console.log(`  User Email: ${parsed.user.email}`);
+                        }
+                        if (parsed.expires_at) {
+                            console.log(`  Expires: ${new Date(parsed.expires_at * 1000)}`);
+                        }
+                    } catch (e) {
+                        // Not JSON
+                    }
+                }
+            }
+            
+            console.log('=== END INSPECTION ===');
+        }
+        
+        function clearAuthStorage() {
+            const keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                keys.push(localStorage.key(i));
+            }
+            
+            keys.forEach(key => {
+                if (key.startsWith('sb-') || key.includes('auth') || key.includes('supabase')) {
+                    localStorage.removeItem(key);
+                    console.log(`Removed: ${key}`);
+                }
+            });
+            
+            alert('Auth storage cleared!');
+            showStorage();
+        }
+        
+        // Auto-run on load
+        window.onload = showStorage;
+    </script>
+</body>
+</html>

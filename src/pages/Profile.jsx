@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { updateProfile, supabase } from '../lib/supabase'
@@ -62,13 +63,19 @@ const Profile = () => {
   ]
 
   const dietaryOptions = [
+    'Daniel Diet',
     'Vegetarian',
     'Vegan',
+    'Pescatarian',
     'Gluten-Free',
     'Dairy-Free',
     'Low-Carb',
     'Keto',
+    'Paleo',
     'Whole30',
+    'Low-FODMAP',
+    'Sugar-Free',
+    'High-Protein',
     'Nut-Free',
     'Halal',
     'Kosher'

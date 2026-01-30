@@ -1,0 +1,64 @@
+import { useState, useCallback, useMemo } from 'react'
+import { useToast } from '../contexts/ToastContext'
+
+/**
+ * Validation rules
+ */
+export const validationRules = {
+  required: (message = 'This field is required') => (value) => {
+    if (!value || (typeof value === 'string' && !value.trim())) {
+      return message
+    }
+    return null
+  },
+  
+  email: (message = 'Please enter a valid email address') => (value) => {
+    if (!value) return null // Let required rule handle empty values
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(value) ? null : message
+  },
+  
+  minLength: (min, message = `Must be at least ${min} characters`) => (value) => {
+    if (!value) return null
+    return value.length >= min ? null : message
+  },
+  
+  maxLength: (max, message = `Must be no more than ${max} characters`) => (value) => {
+    if (!value) return null
+    return value.length <= max ? null : message
+  },
+  
+  pattern: (regex, message = 'Invalid format') => (value) => {
+    if (!value) return null
+    return regex.test(value) ? null : message
+  },
+  
+  passwordStrength: (message = 'Password must contain at least 8 characters, one uppercase, one lowercase, and one number') => (value) => {
+    if (!value) return null
+    const hasLength = value.length >= 8
+    const hasUpper = /[A-Z]/.test(value)
+    const hasLower = /[a-z]/.test(value)
+    const hasNumber = /\d/.test(value)
+    
+    return hasLength && hasUpper && hasLower && hasNumber ? null : message
+  },
+  
+  confirmPassword: (originalPassword, message = 'Passwords do not match') => (value) => {
+    if (!value) return null
+    return value === originalPassword ? null : message
+  },
+  
+  url: (message = 'Please enter a valid URL') => (value) => {
+    if (!value) return null
+    try {
+      new URL(value)
+      return null
+    } catch {
+      return message
+    }
+  },
+  
+  custom: (validator, message = 'Invalid value') => (value) => {
+    if (!value) return null
+    return validator(value) ? null : message
+  }\n}\n\n/**\n * Form validation hook\n */\nexport const useFormValidation = (initialValues = {}, validationSchema = {}, options = {}) => {\n  const { toast } = useToast()\n  const [values, setValues] = useState(initialValues)\n  const [errors, setErrors] = useState({})\n  const [touched, setTouched] = useState({})\n  const [isSubmitting, setIsSubmitting] = useState(false)\n  \n  const {\n    showErrorToast = false,\n    validateOnChange = true,\n    validateOnBlur = true\n  } = options\n  \n  // Validate a single field\n  const validateField = useCallback((name, value) => {\n    const fieldValidators = validationSchema[name]\n    if (!fieldValidators) return null\n    \n    for (const validator of fieldValidators) {\n      const error = validator(value)\n      if (error) return error\n    }\n    return null\n  }, [validationSchema])\n  \n  // Validate all fields\n  const validateForm = useCallback(() => {\n    const newErrors = {}\n    let isValid = true\n    \n    Object.keys(validationSchema).forEach(fieldName => {\n      const error = validateField(fieldName, values[fieldName])\n      if (error) {\n        newErrors[fieldName] = error\n        isValid = false\n      }\n    })\n    \n    setErrors(newErrors)\n    return { isValid, errors: newErrors }\n  }, [values, validateField, validationSchema])\n  \n  // Set field value\n  const setValue = useCallback((name, value) => {\n    setValues(prev => ({ ...prev, [name]: value }))\n    \n    if (validateOnChange) {\n      const error = validateField(name, value)\n      setErrors(prev => ({ ...prev, [name]: error }))\n    }\n  }, [validateField, validateOnChange])\n  \n  // Set multiple values\n  const setValues = useCallback((newValues) => {\n    setValues(prev => ({ ...prev, ...newValues }))\n    \n    if (validateOnChange) {\n      const newErrors = { ...errors }\n      Object.keys(newValues).forEach(name => {\n        const error = validateField(name, newValues[name])\n        newErrors[name] = error\n      })\n      setErrors(newErrors)\n    }\n  }, [errors, validateField, validateOnChange])\n  \n  // Handle field blur\n  const handleBlur = useCallback((name) => {\n    setTouched(prev => ({ ...prev, [name]: true }))\n    \n    if (validateOnBlur) {\n      const error = validateField(name, values[name])\n      setErrors(prev => ({ ...prev, [name]: error }))\n    }\n  }, [values, validateField, validateOnBlur])\n  \n  // Handle form submission\n  const handleSubmit = useCallback(async (onSubmit) => {\n    const { isValid, errors: validationErrors } = validateForm()\n    \n    // Mark all fields as touched\n    const allTouched = {}\n    Object.keys(validationSchema).forEach(key => {\n      allTouched[key] = true\n    })\n    setTouched(allTouched)\n    \n    if (!isValid) {\n      if (showErrorToast) {\n        const firstError = Object.values(validationErrors).find(Boolean)\n        toast.error(firstError || 'Please fix the errors in the form')\n      }\n      return false\n    }\n    \n    setIsSubmitting(true)\n    try {\n      await onSubmit(values)\n      return true\n    } catch (error) {\n      console.error('Form submission error:', error)\n      if (showErrorToast) {\n        toast.error(error.message || 'Failed to submit form')\n      }\n      return false\n    } finally {\n      setIsSubmitting(false)\n    }\n  }, [validateForm, validationSchema, values, showErrorToast, toast])\n  \n  // Reset form\n  const reset = useCallback((newValues = initialValues) => {\n    setValues(newValues)\n    setErrors({})\n    setTouched({})\n    setIsSubmitting(false)\n  }, [initialValues])\n  \n  // Computed properties\n  const isValid = useMemo(() => {\n    return Object.keys(validationSchema).every(key => !errors[key])\n  }, [errors, validationSchema])\n  \n  const hasErrors = useMemo(() => {\n    return Object.values(errors).some(Boolean)\n  }, [errors])\n  \n  const isDirty = useMemo(() => {\n    return Object.keys(values).some(key => values[key] !== initialValues[key])\n  }, [values, initialValues])\n  \n  return {\n    values,\n    errors,\n    touched,\n    isSubmitting,\n    isValid,\n    hasErrors,\n    isDirty,\n    setValue,\n    setValues,\n    handleBlur,\n    handleSubmit,\n    validateForm,\n    validateField,\n    reset\n  }\n}\n\n/**\n * Input component with validation\n */\nexport const ValidatedInput = ({\n  name,\n  label,\n  type = 'text',\n  value,\n  onChange,\n  onBlur,\n  error,\n  touched,\n  required = false,\n  className = '',\n  placeholder = '',\n  disabled = false,\n  ...props\n}) => {\n  const { isDark } = useTheme()\n  const showError = touched && error\n  \n  return (\n    <div className={className}>\n      {label && (\n        <label \n          htmlFor={name}\n          className={`block text-sm font-medium mb-2 ${\n            isDark ? 'text-gray-200' : 'text-gray-700'\n          }`}\n        >\n          {label}\n          {required && <span className=\"text-red-500 ml-1\">*</span>}\n        </label>\n      )}\n      <input\n        id={name}\n        name={name}\n        type={type}\n        value={value || ''}\n        onChange={(e) => onChange(name, e.target.value)}\n        onBlur={() => onBlur(name)}\n        placeholder={placeholder}\n        disabled={disabled}\n        className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 ${\n          showError\n            ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200'\n            : isDark\n            ? 'border-gray-600 bg-gray-700 text-white focus:border-temple-gold focus:ring-2 focus:ring-temple-gold/20'\n            : 'border-gray-300 bg-white focus:border-temple-purple focus:ring-2 focus:ring-temple-purple/20'\n        } ${\n          disabled ? 'opacity-50 cursor-not-allowed' : ''\n        }`}\n        {...props}\n      />\n      {showError && (\n        <p className=\"text-red-500 text-sm mt-1\">\n          {error}\n        </p>\n      )}\n    </div>\n  )\n}\n\nexport default useFormValidation

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Supabase Auth Test</h1>
+    
+    <div id="status">Loading...</div>
+    
+    <div id="loginForm">
+        <h2>Login Test</h2>
+        <input type="email" id="email" placeholder="Email" value="dparris2@gmail.com">
+        <input type="password" id="password" placeholder="Password" value="">
+        <button onclick="testLogin()">Test Login</button>
+    </div>
+    
+    <div id="result"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://tcmevqioetvekttycfdt.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjbWV2cWlvZXR2ZWt0dHljZmR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc4ODYyMDAsImV4cCI6MjA1MzQ2MjIwMH0.f1WgEBSk0mGZFJ6KbT-nIJk6mIB15OZlZjjxGJXQdvU'
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        
+        async function checkSession() {
+            const { data: { session }, error } = await supabase.auth.getSession()
+            console.log('Session check:', { session, error })
+            document.getElementById('status').innerHTML = session ? 
+                `Logged in as: ${session.user.email}` : 
+                'No active session'
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            
+            console.log('Attempting login for:', email)
+            
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            })
+            
+            console.log('Login result:', { data, error })
+            
+            if (error) {
+                document.getElementById('result').innerHTML = `Error: ${error.message}`
+            } else {
+                document.getElementById('result').innerHTML = `Success: ${data.user.email}`
+                checkSession()
+            }
+        }
+        
+        // Check session on load
+        checkSession()
+    </script>
+</body>
+</html>

@@ -1,4 +1,6 @@
 import { supabase } from './supabase'
+import { notificationTriggers } from './notifications'
+import { incrementUserStat } from './supabase'
 
 // Get all active challenges
 export const getChallenges = async () => {
@@ -174,6 +176,17 @@ export const completeDay = async (userId, userChallengeId, challengeDayId, dayNu
     console.error('Error updating user challenge:', updateError)
   }
 
+  // Award points
+  const pointsEarned = 25
+  await incrementUserStat(userId, 'points', pointsEarned)
+
+  // Send notification
+  try {
+    await notificationTriggers.challengeDayComplete(userId, dayNumber, pointsEarned)
+  } catch (err) {
+    console.error('Failed to send challenge notification:', err)
+  }
+
   return progressData
 }
 
@@ -187,13 +200,26 @@ export const completeChallenge = async (userChallengeId, pointsReward) => {
       updated_at: new Date().toISOString()
     })
     .eq('id', userChallengeId)
-    .select()
+    .select('user_id')
     .single()
 
   if (error) {
     console.error('Error completing challenge:', error)
     throw error
   }
+
+  // Award bonus points
+  if (data) {
+    await incrementUserStat(data.user_id, 'points', pointsReward)
+    
+    // Send celebration notification
+    try {
+      await notificationTriggers.streakMilestone(data.user_id, 'Challenge', 'Completed!')
+    } catch (err) {
+      console.error('Failed to send completion notification:', err)
+    }
+  }
+
   return data
 }
 

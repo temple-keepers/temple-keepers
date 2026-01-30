@@ -12,7 +12,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      storageKey: 'temple-keepers-auth', // Consistent storage key
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined
+    },
+    global: {
+      headers: {
+        'x-application-name': 'temple-keepers'
+      }
+    },
+    db: {
+      schema: 'public'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
+    }
+  }
 )
 
 // ============================================
@@ -28,9 +51,9 @@ export const getProfile = async (userId) => {
   
   if (error) {
     console.error('Error fetching profile:', error)
-    return null
+    return { data: null, error }
   }
-  return data
+  return { data, error: null }
 }
 
 export const updateProfile = async (userId, updates) => {
@@ -60,8 +83,6 @@ export const updateProfile = async (userId, updates) => {
       updated_at: new Date().toISOString()
     }
     
-    console.log('💾 Sending to database:', JSON.stringify(updateData, null, 2))
-    
     // Use upsert to handle both insert and update cases
     const { data, error } = await supabase
       .from('profiles')
@@ -74,15 +95,7 @@ export const updateProfile = async (userId, updates) => {
     
     if (error) {
       console.error('❌ Profile update error:', error)
-      console.error('Error code:', error.code)
-      console.error('Error message:', error.message)
-      console.error('Error details:', error.details)
       throw error
-    }
-    
-    if (!data) {
-      console.error('❌ No data returned from update')
-      throw new Error('No data returned from profile update')
     }
     
     console.log('✅ Profile updated successfully:', data)
@@ -99,7 +112,6 @@ export const updateProfile = async (userId, updates) => {
 
 export const saveRecipe = async (userId, recipe) => {
   console.log('📤 Saving recipe for user:', userId)
-  console.log('Recipe object:', recipe)
   
   const recipeData = {
     user_id: userId,
@@ -117,17 +129,11 @@ export const saveRecipe = async (userId, recipe) => {
     is_favorite: false
   }
 
-  console.log('💾 Recipe data to insert:', recipeData)
-  console.log('🔄 Calling supabase.from(saved_recipes).insert()...')
-  
   const { data, error } = await supabase
     .from('saved_recipes')
     .insert(recipeData)
     .select()
     .single()
-
-  console.log('📦 Supabase response - data:', data)
-  console.log('📦 Supabase response - error:', error)
 
   if (error) {
     console.error('❌ Recipe save error:', error)
@@ -179,8 +185,6 @@ export const toggleFavorite = async (recipeId, isFavorite) => {
 // ============================================
 
 export const saveDevotionalCompletion = async (userId, devotional) => {
-  console.log('📤 Saving devotional completion for user:', userId)
-  
   const { data, error } = await supabase
     .from('devotional_progress')
     .insert({
@@ -196,7 +200,6 @@ export const saveDevotionalCompletion = async (userId, devotional) => {
     throw error
   }
   
-  console.log('✅ Devotional saved successfully!')
   return data
 }
 
@@ -227,9 +230,9 @@ export const getUserStats = async (userId) => {
 
   if (error && error.code !== 'PGRST116') {
     console.error('Error fetching stats:', error)
-    return null
+    return { data: null, error }
   }
-  return data
+  return { data, error: null }
 }
 
 export const updateUserStats = async (userId, updates) => {
@@ -239,7 +242,7 @@ export const updateUserStats = async (userId, updates) => {
       user_id: userId,
       ...updates,
       updated_at: new Date().toISOString()
-    })
+    }, { onConflict: 'user_id' })
     .select()
     .single()
 
@@ -252,34 +255,32 @@ export const updateUserStats = async (userId, updates) => {
 
 export const incrementUserStat = async (userId, statField, pointsToAdd = 0) => {
   try {
-    // Get current stats
     let currentStats = await getUserStats(userId)
     
-    // If no stats exist, create initial record
-    if (!currentStats) {
+    if (!currentStats?.data) {
       currentStats = {
-        user_id: userId,
-        streak_days: 0,
-        devotionals_completed: 0,
-        recipes_saved: 0,
-        total_points: 0,
-        last_activity_date: new Date().toISOString().split('T')[0]
+        data: {
+          user_id: userId,
+          streak_days: 0,
+          devotionals_completed: 0,
+          recipes_saved: 0,
+          total_points: 0,
+          last_activity_date: new Date().toISOString().split('T')[0]
+        }
       }
     }
 
-    // Increment the specified stat and add points
     const updates = {
-      [statField]: (currentStats[statField] || 0) + 1,
-      total_points: (currentStats.total_points || 0) + pointsToAdd,
+      [statField]: (currentStats.data[statField] || 0) + 1,
+      total_points: (currentStats.data.total_points || 0) + pointsToAdd,
       last_activity_date: new Date().toISOString().split('T')[0]
     }
 
-    // Update streak if it's a new day
     const today = new Date().toISOString().split('T')[0]
-    if (currentStats.last_activity_date !== today) {
+    if (currentStats.data.last_activity_date !== today) {
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-      if (currentStats.last_activity_date === yesterday) {
-        updates.streak_days = (currentStats.streak_days || 0) + 1
+      if (currentStats.data.last_activity_date === yesterday) {
+        updates.streak_days = (currentStats.data.streak_days || 0) + 1
       } else {
         updates.streak_days = 1
       }
@@ -297,8 +298,6 @@ export const incrementUserStat = async (userId, statField, pointsToAdd = 0) => {
 // ============================================
 
 export const publishRecipe = async (userId, recipe, isAIGenerated = true) => {
-  console.log('📤 Publishing recipe to library')
-  
   const recipeData = {
     user_id: userId,
     author_name: recipe.author_name || 'Anonymous',
@@ -316,7 +315,6 @@ export const publishRecipe = async (userId, recipe, isAIGenerated = true) => {
     cuisine: recipe.cuisine || '',
     meal_type: recipe.mealType || recipe.meal_type || '',
     dietary_tags: recipe.dietaryTags || recipe.dietary_tags || [],
-    // Auto-approve AI-generated recipes, pending for user-submitted
     status: isAIGenerated ? 'approved' : 'pending'
   }
 
@@ -331,13 +329,10 @@ export const publishRecipe = async (userId, recipe, isAIGenerated = true) => {
     throw error
   }
   
-  console.log('✅ Recipe published successfully!')
   return data
 }
 
 export const getRecipeLibrary = async (sortBy = 'recent') => {
-  console.log('📚 Fetching recipe library, sortBy:', sortBy)
-  
   try {
     let query = supabase
       .from('recipes')
@@ -351,7 +346,7 @@ export const getRecipeLibrary = async (sortBy = 'recent') => {
       case 'topRated':
         query = query.order('view_count', { ascending: false, nullsFirst: false })
         break
-      default: // recent
+      default:
         query = query.order('created_at', { ascending: false })
     }
 
@@ -359,36 +354,22 @@ export const getRecipeLibrary = async (sortBy = 'recent') => {
 
     if (error) {
       console.error('❌ Error fetching recipe library:', error)
-      console.error('Error code:', error.code)
-      console.error('Error message:', error.message)
       throw error
     }
 
-    console.log('✅ Fetched recipes:', data?.length || 0)
-
-    // Return recipes with default ratings
-    const recipes = (data || []).map(recipe => ({
+    return (data || []).map(recipe => ({
       ...recipe,
       author_name: recipe.author_name || 'Anonymous',
       average_rating: 0,
       rating_count: 0
     }))
-    
-    return recipes
   } catch (err) {
     console.error('❌ Exception in getRecipeLibrary:', err)
-    // Return empty array instead of throwing to prevent UI crash
     return []
   }
 }
 
 export const saveRecipeFromLibrary = async (userId, recipe) => {
-  console.log('📤 Saving recipe from library to personal collection')
-  console.log('User ID:', userId)
-  console.log('Recipe ID:', recipe.id)
-  console.log('Recipe title:', recipe.title)
-  
-  // First, save to saved_recipes
   const recipeData = {
     user_id: userId,
     title: recipe.title,
@@ -408,7 +389,6 @@ export const saveRecipeFromLibrary = async (userId, recipe) => {
     is_favorite: false
   }
 
-  console.log('💾 Inserting into saved_recipes...')
   const { data: savedRecipe, error: saveError } = await supabase
     .from('saved_recipes')
     .insert(recipeData)
@@ -419,11 +399,8 @@ export const saveRecipeFromLibrary = async (userId, recipe) => {
     console.error('❌ Error saving to saved_recipes:', saveError)
     throw saveError
   }
-  
-  console.log('✅ Saved to saved_recipes:', savedRecipe.id)
 
-  // Track the save in recipe_library_saves
-  console.log('📝 Tracking save in recipe_library_saves...')
+  // Track the save
   const { error: trackError } = await supabase
     .from('recipe_library_saves')
     .insert({
@@ -432,15 +409,10 @@ export const saveRecipeFromLibrary = async (userId, recipe) => {
       saved_recipe_id: savedRecipe.id
     })
 
-  if (trackError && trackError.code !== '23505') { // Ignore duplicate key error
+  if (trackError && trackError.code !== '23505') {
     console.error('⚠️ Error tracking recipe save:', trackError)
-  } else if (!trackError) {
-    console.log('✅ Tracked in recipe_library_saves')
-  } else {
-    console.log('ℹ️ Recipe already saved (duplicate key)')
   }
 
-  console.log('✅ Recipe saved successfully!')
   return savedRecipe
 }
 
@@ -524,11 +496,11 @@ export const getUserPublishedRecipes = async (userId) => {
   }
   return data || []
 }
+
 // ============================================
 // WATER TRACKER FUNCTIONS
 // ============================================
 
-// Helper to get local date string (YYYY-MM-DD)
 const getLocalDateString = (date = new Date()) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -595,7 +567,6 @@ export const getWaterHistory = async (userId, days = 7) => {
 // ============================================
 
 export const getMealPlan = async (userId, startDate, endDate) => {
-  // Get the meal plan entries
   const { data: mealData, error: mealError } = await supabase
     .from('meal_plans')
     .select('*')
@@ -613,10 +584,8 @@ export const getMealPlan = async (userId, startDate, endDate) => {
     return []
   }
 
-  // Get unique library recipe IDs
   const libraryRecipeIds = [...new Set(mealData.filter(m => m.recipe_id).map(m => m.recipe_id))]
 
-  // Fetch library recipes if any
   let libraryRecipes = {}
   if (libraryRecipeIds.length > 0) {
     const { data: libData } = await supabase
@@ -629,14 +598,12 @@ export const getMealPlan = async (userId, startDate, endDate) => {
     }
   }
 
-  // Merge recipe data into meal plan
   return mealData.map(meal => {
     let recipe = null
     
     if (meal.recipe_id && libraryRecipes[meal.recipe_id]) {
       recipe = libraryRecipes[meal.recipe_id]
     } else if (meal.custom_meal) {
-      // Try to parse custom_meal as JSON (for saved recipes stored as custom meal)
       try {
         recipe = JSON.parse(meal.custom_meal)
       } catch {
@@ -658,10 +625,8 @@ export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSour
   }
 
   if (recipeSource === 'library') {
-    // Use recipe_id for library recipes
     insertData.recipe_id = recipeId
   } else if (recipeSource === 'saved' && recipeData) {
-    // Store saved recipe data as JSON in custom_meal
     insertData.custom_meal = JSON.stringify({
       id: recipeData.id,
       title: recipeData.title,
@@ -672,7 +637,6 @@ export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSour
     })
   }
   
-  // Insert/update the meal plan entry
   const { data, error } = await supabase
     .from('meal_plans')
     .upsert(insertData, { onConflict: 'user_id,date,meal_type' })
@@ -684,7 +648,6 @@ export const addMealToPlan = async (userId, date, mealType, recipeId, recipeSour
     throw error
   }
   
-  // Return with recipe data
   let recipe = null
   if (insertData.recipe_id) {
     const { data: recipeResult } = await supabase
@@ -718,7 +681,6 @@ export const removeMealFromPlan = async (mealPlanId) => {
 }
 
 export const getShoppingList = async (userId, startDate, endDate) => {
-  // Get the meal plan entries
   const { data: mealData, error: mealError } = await supabase
     .from('meal_plans')
     .select('recipe_id, custom_meal')
@@ -735,12 +697,10 @@ export const getShoppingList = async (userId, startDate, endDate) => {
     return []
   }
 
-  // Get unique library recipe IDs
   const libraryRecipeIds = [...new Set(mealData.filter(m => m.recipe_id).map(m => m.recipe_id))]
 
   let allIngredients = []
 
-  // Fetch library recipe ingredients
   if (libraryRecipeIds.length > 0) {
     const { data: libData } = await supabase
       .from('recipes')
@@ -754,7 +714,6 @@ export const getShoppingList = async (userId, startDate, endDate) => {
     }
   }
 
-  // Extract ingredients from custom_meal (saved recipes stored as JSON)
   mealData.forEach(meal => {
     if (meal.custom_meal) {
       try {
@@ -768,13 +727,13 @@ export const getShoppingList = async (userId, startDate, endDate) => {
     }
   })
 
-  // Remove duplicates (case-insensitive)
   const uniqueIngredients = [...new Map(
     allIngredients.filter(Boolean).map(item => [item.toLowerCase().trim(), item])
   ).values()]
 
   return uniqueIngredients
 }
+
 // ============================================
 // PASSWORD RESET FUNCTIONS
 // ============================================
@@ -821,4 +780,253 @@ export const resendVerificationEmail = async (email) => {
   }
 
   return data
+}
+
+// ============================================
+// DAILY LOGS FUNCTIONS
+// ============================================
+
+export const getMealLogs = async (userId, date = getLocalDateString()) => {
+  const { data, error } = await supabase
+    .from('meal_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date)
+    .order('time', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching meal logs:', error)
+    return []
+  }
+  return data || []
+}
+
+export const createMealLog = async (userId, mealData) => {
+  const { data, error } = await supabase
+    .from('meal_logs')
+    .insert({
+      user_id: userId,
+      date: mealData.date || getLocalDateString(),
+      meal_type: mealData.meal_type,
+      meal_name: mealData.meal_name,
+      description: mealData.description,
+      calories: mealData.calories,
+      portion_size: mealData.portion_size,
+      ingredients: mealData.ingredients,
+      notes: mealData.notes,
+      time: mealData.time || new Date().toTimeString().slice(0, 5),
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating meal log:', error)
+    throw error
+  }
+  return data
+}
+
+export const updateMealLog = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('meal_logs')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating meal log:', error)
+    throw error
+  }
+  return data
+}
+
+export const deleteMealLog = async (id) => {
+  const { error } = await supabase
+    .from('meal_logs')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting meal log:', error)
+    throw error
+  }
+}
+
+export const getMoodLogs = async (userId, date = getLocalDateString()) => {
+  const { data, error } = await supabase
+    .from('mood_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date)
+    .order('time', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching mood logs:', error)
+    return []
+  }
+  return data || []
+}
+
+export const createMoodLog = async (userId, moodData) => {
+  const { data, error } = await supabase
+    .from('mood_logs')
+    .insert({
+      user_id: userId,
+      date: moodData.date || getLocalDateString(),
+      time: moodData.time || new Date().toTimeString().slice(0, 5),
+      mood: moodData.mood,
+      energy_level: moodData.energy_level,
+      stress_level: moodData.stress_level,
+      sleep_quality: moodData.sleep_quality,
+      notes: moodData.notes,
+      activities: moodData.activities,
+      triggers: moodData.triggers,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating mood log:', error)
+    throw error
+  }
+  return data
+}
+
+export const updateMoodLog = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('mood_logs')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating mood log:', error)
+    throw error
+  }
+  return data
+}
+
+export const deleteMoodLog = async (id) => {
+  const { error } = await supabase
+    .from('mood_logs')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting mood log:', error)
+    throw error
+  }
+}
+
+export const getSymptomLogs = async (userId, date = getLocalDateString()) => {
+  const { data, error } = await supabase
+    .from('symptom_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date)
+    .order('time', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching symptom logs:', error)
+    return []
+  }
+  return data || []
+}
+
+export const createSymptomLog = async (userId, symptomData) => {
+  const { data, error } = await supabase
+    .from('symptom_logs')
+    .insert({
+      user_id: userId,
+      date: symptomData.date || getLocalDateString(),
+      time: symptomData.time || new Date().toTimeString().slice(0, 5),
+      symptom_type: symptomData.symptom_type,
+      severity: symptomData.severity,
+      location: symptomData.location,
+      duration: symptomData.duration,
+      notes: symptomData.notes,
+      triggers: symptomData.triggers,
+      relieved_by: symptomData.relieved_by,
+      created_at: new Date().toISOString()
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating symptom log:', error)
+    throw error
+  }
+  return data
+}
+
+export const updateSymptomLog = async (id, updates) => {
+  const { data, error} = await supabase
+    .from('symptom_logs')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error updating symptom log:', error)
+    throw error
+  }
+  return data
+}
+
+export const deleteSymptomLog = async (id) => {
+  const { error } = await supabase
+    .from('symptom_logs')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error deleting symptom log:', error)
+    throw error
+  }
+}
+
+export const getDailyLog = async (userId, date = getLocalDateString()) => {
+  const [water, meals, moods, symptoms] = await Promise.all([
+    getWaterLog(userId, date),
+    getMealLogs(userId, date),
+    getMoodLogs(userId, date),
+    getSymptomLogs(userId, date)
+  ])
+
+  return {
+    date,
+    water: water || { glasses: 0, goal: 8 },
+    meals: meals || [],
+    moods: moods || [],
+    symptoms: symptoms || []
+  }
+}
+
+export const getDailyLogHistory = async (userId, days = 7) => {
+  const dates = []
+  for (let i = 0; i < days; i++) {
+    const date = new Date()
+    date.setDate(date.getDate() - i)
+    dates.push(getLocalDateString(date))
+  }
+
+  const logs = await Promise.all(
+    dates.map(date => getDailyLog(userId, date))
+  )
+
+  return logs
 }

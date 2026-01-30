@@ -7,8 +7,22 @@
     "predev": "node scripts/cleanup.mjs",
     "dev": "vite",
     "dev:clean": "powershell -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vite build && node scripts/build-optimizer.mjs",
+    "build:fast": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:all": "npm run test:run && npm run test:e2e",
+    "test:security": "node scripts/security-audit.mjs",
+    "test:performance": "node scripts/performance-audit.mjs",
+    "test:accessibility": "node scripts/accessibility-audit.mjs",
+    "playwright:install": "playwright install"
   },
   "dependencies": {
     "@google/generative-ai": "^0.2.0",
@@ -20,13 +34,28 @@
     "react-router-dom": "^6.22.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.58.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.17",
+    "axe-core": "^4.11.1",
+    "happy-dom": "^20.4.0",
+    "jsdom": "^27.4.0",
+    "lighthouse": "^13.0.1",
+    "msw": "^2.12.7",
+    "playwright": "^1.58.0",
     "postcss": "^8.4.35",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.18",
+    "web-vitals": "^5.1.0",
     "workbox-window": "^7.4.0"
   }
 }

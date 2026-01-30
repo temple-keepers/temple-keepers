@@ -2,7 +2,7 @@
   "name": "Temple Keepers",
   "short_name": "Temple Keepers",
   "description": "Faith-based wellness for Christians - Honor Your Body, Nurture Your Soul",
-  "start_url": "/",
+  "start_url": "/?v=1.0.3",
   "display": "standalone",
   "background_color": "#0f0a1a",
   "theme_color": "#7c3aed",

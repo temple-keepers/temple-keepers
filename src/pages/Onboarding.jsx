@@ -45,12 +45,20 @@ const Onboarding = () => {
 
   const dietaryOptions = [
     { id: 'no_restrictions', label: 'No Restrictions' },
+    { id: 'daniel_diet', label: 'Daniel Diet' },
     { id: 'vegetarian', label: 'Vegetarian' },
     { id: 'vegan', label: 'Vegan' },
+    { id: 'pescatarian', label: 'Pescatarian' },
     { id: 'gluten_free', label: 'Gluten-Free' },
     { id: 'dairy_free', label: 'Dairy-Free' },
+    { id: 'low_carb', label: 'Low-Carb' },
     { id: 'keto', label: 'Keto' },
     { id: 'paleo', label: 'Paleo' },
+    { id: 'whole30', label: 'Whole30' },
+    { id: 'low_fodmap', label: 'Low-FODMAP' },
+    { id: 'sugar_free', label: 'Sugar-Free' },
+    { id: 'high_protein', label: 'High-Protein' },
+    { id: 'nut_free', label: 'Nut-Free' },
     { id: 'halal', label: 'Halal' },
     { id: 'kosher', label: 'Kosher' }
   ]

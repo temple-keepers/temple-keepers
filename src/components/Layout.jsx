@@ -9,7 +9,10 @@ import { Shield, Lock } from 'lucide-react'
 import { Droplets, CalendarDays } from 'lucide-react'
 import { useSubscription } from '../contexts/SubscriptionContext'
 import UpgradeBanner from './UpgradeBanner'
+import NotificationCenter from './NotificationCenter'
 import { Trophy } from 'lucide-react'
+import { Target } from 'lucide-react'
+
 import { 
   Home, 
   BookOpen, 
@@ -20,7 +23,8 @@ import {
   X,
   Heart,
   Library,
-  Users
+  Users,
+  Activity
 } from 'lucide-react'
 
 const Layout = ({ children }) => {
@@ -32,9 +36,21 @@ const Layout = ({ children }) => {
   const { isAdmin } = useAdmin()
   const { hasAccess, isPaid, loading } = useSubscription()
 
-  const handleSignOut = async () => {
-    await signOut()
-    navigate('/login')
+  const handleSignOut = async (e) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    console.log('Sign out clicked')
+    try {
+      setMobileMenuOpen(false)
+      await signOut()
+      console.log('Sign out successful, reloading page')
+      // Force a full page reload to clear all cached state
+      window.location.href = '/login'
+    } catch (error) {
+      console.error('Sign out error:', error)
+      // Even if there's an error, force reload to login
+      window.location.href = '/login'
+    }
   }
 
   const navigation = [
@@ -42,11 +58,13 @@ const Layout = ({ children }) => {
     { name: 'Dashboard', href: '/dashboard', icon: Home, locked: false },
     { name: 'Devotionals', href: '/devotionals', icon: BookOpen, locked: false },
     { name: 'Challenges', href: '/challenges', icon: Trophy, locked: false },
-    
+    { name: 'Habits', href: '/habits', icon: Target, locked: false },
+
     // Nutrition & Health
     { name: 'AI Recipes', href: '/recipes', icon: ChefHat, locked: false },
     { name: 'Recipe Library', href: '/recipe-library', icon: Library, locked: false },
     { name: 'Meal Planner', href: '/meal-planner', icon: CalendarDays, locked: hasAccess ? !hasAccess('meal_planner') : true },
+    { name: 'Daily Log', href: '/daily-log', icon: Activity, locked: false },
     { name: 'Water Tracker', href: '/water', icon: Droplets, locked: hasAccess ? !hasAccess('water_tracker') : true },
     
     // Community & Social
@@ -74,8 +92,9 @@ const Layout = ({ children }) => {
         fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300
         ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         ${isDark ? 'bg-gray-800 border-r border-gray-700' : 'bg-white border-r border-gray-200'}
+        overflow-y-auto
       `}>
-        <div className="flex flex-col h-full p-4">
+        <div className="flex flex-col min-h-full p-4">
           {/* Logo */}
           <div className="flex items-center gap-3 px-2 mb-8">
             <img src="/logo.png" alt="Temple Keepers" className="w-10 h-10 object-contain" />
@@ -139,7 +158,10 @@ const Layout = ({ children }) => {
           <div className={`pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             {/* Theme Toggle */}
             <button
-              onClick={toggleTheme}
+              onClick={() => {
+                toggleTheme()
+                setMobileMenuOpen(false)
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                 isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'
               }`}
@@ -151,6 +173,11 @@ const Layout = ({ children }) => {
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                handleSignOut(e)
+              }}
+              type="button"
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                 isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'
               }`}
@@ -167,11 +194,13 @@ const Layout = ({ children }) => {
         <div 
           className="lg:hidden fixed inset-0 bg-black/50 z-30"
           onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen p-4 lg:p-8">
+        <NotificationCenter />
         {children}
       </main>
     </div>

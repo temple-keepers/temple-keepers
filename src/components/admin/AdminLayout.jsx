@@ -24,8 +24,10 @@ const AdminLayout = ({ children }) => {
   ]
 
   const handleSignOut = async () => {
+    console.log('Admin sign out clicked')
     await signOut()
-    navigate('/login')
+    // Force full page reload to clear all state
+    window.location.href = '/login'
   }
 
   const isActive = (path) => path === '/admin' ? location.pathname === '/admin' : location.pathname.startsWith(path)

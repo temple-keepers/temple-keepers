@@ -228,32 +228,57 @@ const FeedTab = ({ posts, user, userProfile, isDark, toast, onRefresh }) => {
   const [loadingComment, setLoadingComment] = useState(false)
 
   useEffect(() => {
+    let mounted = true
+    
     // Load reactions and saves for all posts
     const loadPostData = async () => {
-      const reactions = {}
-      const userReacts = {}
-      const saves = {}
+      if (!posts.length || !user?.id) return
       
-      for (const post of posts) {
-        const reactionData = await getPostReactions(post.id)
-        reactions[post.id] = reactionData.reactions
+      try {
+        // Parallelize API calls instead of sequential
+        const postPromises = posts.map(async (post) => {
+          const [reactionData, userReaction, isSaved] = await Promise.all([
+            getPostReactions(post.id),
+            getUserReaction(post.id, user.id),
+            checkIfSaved(post.id, user.id)
+          ])
+          
+          return {
+            postId: post.id,
+            reactions: reactionData.reactions,
+            userReaction,
+            isSaved
+          }
+        })
         
-        const userReaction = await getUserReaction(post.id, user.id)
-        userReacts[post.id] = userReaction
+        const results = await Promise.all(postPromises)
         
-        const isSaved = await checkIfSaved(post.id, user.id)
-        saves[post.id] = isSaved
+        if (!mounted) return // Prevent state update if unmounted
+        
+        const reactions = {}
+        const userReacts = {}
+        const saves = {}
+        
+        results.forEach(({ postId, reactions: postReactions, userReaction, isSaved }) => {
+          reactions[postId] = postReactions
+          userReacts[postId] = userReaction
+          saves[postId] = isSaved
+        })
+        
+        setPostReactions(reactions)
+        setUserReactions(userReacts)
+        setSavedPosts(saves)
+      } catch (error) {
+        console.error('Error loading post data:', error)
       }
-      
-      setPostReactions(reactions)
-      setUserReactions(userReacts)
-      setSavedPosts(saves)
     }
     
-    if (posts.length > 0) {
-      loadPostData()
+    loadPostData()
+    
+    return () => {
+      mounted = false
     }
-  }, [posts, user.id])
+  }, [posts.length, user?.id]) // Use posts.length instead of posts array
 
   const handleReaction = async (postId, reactionType) => {
     await addReaction(postId, user.id, reactionType)

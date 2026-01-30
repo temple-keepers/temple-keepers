@@ -5,6 +5,9 @@ import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Heart, CheckCircle } from 'l
 import { useTheme } from '../contexts/ThemeContext'
 import { Sun, Moon } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
+import { useFormValidation } from '../hooks/useFormValidation'
+import { useErrorRecovery } from '../hooks/useErrorRecovery'
+import LoadingSpinner from '../components/LoadingSpinner'
 
 const Signup = () => {
   const [fullName, setFullName] = useState('')
@@ -21,37 +24,95 @@ const Signup = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
 
+  // Form validation
+  const { validateInput, getFieldError } = useFormValidation()
+  
+  // Error recovery for sign up
+  const { execute: executeSignUp, isLoading: signUpLoading } = useErrorRecovery({
+    onError: (error) => {
+      console.error('🚨 Signup form error:', error)
+      const errorMessage = error?.message || 'Failed to create account'
+      toast.error(errorMessage)
+      setError(errorMessage)
+      setLoading(false)
+    }
+  })
+  
   const passwordRequirements = [
     { text: 'At least 8 characters', met: password.length >= 8 },
     { text: 'Contains a number', met: /\d/.test(password) },
     { text: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
   ]
 
+  const isPasswordStrong = passwordRequirements.every(req => req.met)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    const { error } = await signUp(email, password, fullName)
-    
-    if (error) {
-      setError(error)
+    try {
+      console.log('🔐 Starting signup process...')
+
+      // Validate form fields
+      const nameError = validateInput(fullName, { 
+        required: true, 
+        minLength: 2, 
+        maxLength: 100,
+        pattern: /^[a-zA-Z\s'-]+$/
+      }, 'Full name')
+      
+      const emailError = validateInput(email, { required: true, type: 'email' }, 'Email')
+      
+      const passwordError = validateInput(password, { 
+        required: true, 
+        minLength: 8,
+        passwordStrength: true 
+      }, 'Password')
+      
+      const confirmError = validateInput(confirmPassword, { 
+        required: true, 
+        confirmPassword: password 
+      }, 'Confirm password')
+
+      // Check for validation errors
+      if (nameError || emailError || passwordError || confirmError) {
+        const errorMsg = nameError || emailError || passwordError || confirmError
+        setError(errorMsg)
+        setLoading(false)
+        return
+      }
+
+      await executeSignUp(async () => {
+        const { error } = await signUp(email, password, fullName)
+        
+        if (error) {
+          throw new Error(error)
+        }
+
+        setSuccess(true)
+        toast.success('Account created successfully! 🎉')
+        setTimeout(() => {
+          navigate('/dashboard')
+        }, 2000)
+      })
+    } catch (err) {
+      console.error('❌ Form submission error:', err)
+      const errorMessage = err?.message || 'An unexpected error occurred'
+      setError(errorMessage)
+      toast.error(errorMessage)
       setLoading(false)
-    } else {
-      setSuccess(true)
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 2000)
     }
   }
 
+  // Success state
   if (success) {
     return (
       <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${
-  isDark 
-    ? 'bg-gradient-to-br from-temple-dark via-temple-dark-surface to-[#251a30]' 
-    : 'bg-gradient-to-br from-purple-100 via-white to-amber-50'
-}`}>
+        isDark 
+          ? 'bg-gradient-to-br from-temple-dark via-temple-dark-surface to-[#251a30]' 
+          : 'bg-gradient-to-br from-purple-100 via-white to-amber-50'
+      }`}>
         <div className="glass-card-strong rounded-3xl p-8 text-center max-w-md animate-fade-in">
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-green-600" />
@@ -202,14 +263,11 @@ const Signup = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={signUpLoading || !isPasswordStrong || password !== confirmPassword}
               className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
-              {loading ? (
-                <>
-                  <div className="spinner w-5 h-5 border-2 border-white/30 border-t-white" />
-                  <span>Creating account...</span>
-                </>
+              {signUpLoading ? (
+                <LoadingSpinner variant="minimal" />
               ) : (
                 <>
                   <span>Create Account</span>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { generateRecipe } from '../lib/gemini'
 import { saveRecipe, publishRecipe, incrementUserStat } from '../lib/supabase'
@@ -112,7 +112,10 @@ const Recipes = () => {
     cuisinePreference: '',
     dietaryRestrictions: [],
     ingredients: '',
-    healthGoals: ''
+    healthGoals: '',
+    feelLikeEating: '',
+    excludeIngredients: '',
+    prepTimeRange: ''
   })
 
   const mealTypes = [
@@ -124,14 +127,22 @@ const Recipes = () => {
   ]
 
   const dietaryOptions = [
+    'Daniel Diet',
     'Vegetarian',
     'Vegan',
+    'Pescatarian',
     'Gluten-Free',
     'Dairy-Free',
     'Low-Carb',
     'Keto',
+    'Paleo',
     'Whole30',
-    'Nut-Free'
+    'Low-FODMAP',
+    'Sugar-Free',
+    'High-Protein',
+    'Nut-Free',
+    'Halal',
+    'Kosher'
   ]
 
   const cuisineOptions = [
@@ -144,6 +155,16 @@ const Recipes = () => {
     'American',
     'Caribbean'
   ]
+
+  // Initialize preferences from user profile
+  useEffect(() => {
+    if (profile?.dietary_preferences?.length > 0) {
+      setPreferences(prev => ({
+        ...prev,
+        dietaryRestrictions: profile.dietary_preferences
+      }))
+    }
+  }, [profile])
 
   const handleDietaryChange = (option) => {
     setPreferences(prev => ({
@@ -167,7 +188,10 @@ const Recipes = () => {
         dietary: preferences.dietaryRestrictions,
         cuisine: preferences.cuisinePreference,
         ingredients: preferences.ingredients,
-        healthGoals: preferences.healthGoals
+        healthGoals: preferences.healthGoals,
+        feelLikeEating: preferences.feelLikeEating,
+        excludeIngredients: preferences.excludeIngredients,
+        prepTimeRange: preferences.prepTimeRange
       })
       
       if (result.error) {
@@ -355,6 +379,16 @@ const Recipes = () => {
             </h2>
             <div className="space-y-4">
               <div>
+                <label className="form-label">What do you feel like eating?</label>
+                <input
+                  type="text"
+                  value={preferences.feelLikeEating}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, feelLikeEating: e.target.value }))}
+                  className="glass-input w-full"
+                  placeholder="e.g., something creamy, spicy, comfort food"
+                />
+              </div>
+              <div>
                 <label className="form-label">Ingredients to include</label>
                 <input
                   type="text"
@@ -363,6 +397,30 @@ const Recipes = () => {
                   className="glass-input w-full"
                   placeholder="e.g., chicken, spinach, tomatoes"
                 />
+              </div>
+              <div>
+                <label className="form-label">Ingredients to exclude</label>
+                <input
+                  type="text"
+                  value={preferences.excludeIngredients}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, excludeIngredients: e.target.value }))}
+                  className="glass-input w-full"
+                  placeholder="e.g., mushrooms, cilantro, onions"
+                />
+              </div>
+              <div>
+                <label className="form-label">Time to prepare</label>
+                <select
+                  value={preferences.prepTimeRange}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, prepTimeRange: e.target.value }))}
+                  className="glass-input w-full"
+                >
+                  <option value="">Any time</option>
+                  <option value="quick">Quick (under 20 min)</option>
+                  <option value="medium">Medium (20-40 min)</option>
+                  <option value="relaxed">Relaxed (40-60 min)</option>
+                  <option value="long">Long (over 60 min)</option>
+                </select>
               </div>
               <div>
                 <label className="form-label">Health goals</label>

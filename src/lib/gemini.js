@@ -36,12 +36,19 @@ export const generateRecipe = async (preferences) => {
     const cuisine = preferences.cuisine || ''
     const ingredients = preferences.ingredients || ''
     const healthGoals = preferences.healthGoals || ''
+    const feelLikeEating = preferences.feelLikeEating || ''
+    const excludeIngredients = preferences.excludeIngredients || ''
+    const prepTimeRange = preferences.prepTimeRange || ''
     
     // Add randomness factor to ensure unique recipes each time
     const randomSeed = Math.random().toString(36).substring(7)
     const timeStamp = Date.now()
     
     let promptDetails = `Create a UNIQUE and ORIGINAL healthy ${mealType} recipe.`
+    
+    if (feelLikeEating) {
+      promptDetails += ` The user is in the mood for: ${feelLikeEating}.`
+    }
     
     if (cuisine) {
       promptDetails += ` The cuisine style should be ${cuisine}.`
@@ -55,6 +62,20 @@ export const generateRecipe = async (preferences) => {
       promptDetails += ` Try to incorporate these ingredients: ${ingredients}.`
     }
     
+    if (excludeIngredients) {
+      promptDetails += ` IMPORTANT: Do NOT use any of these ingredients: ${excludeIngredients}.`
+    }
+    
+    if (prepTimeRange) {
+      const timeRanges = {
+        'quick': 'under 20 minutes total time (prep + cook)',
+        'medium': 'between 20-40 minutes total time',
+        'relaxed': 'between 40-60 minutes total time',
+        'long': 'over 60 minutes total time'
+      }
+      promptDetails += ` The recipe should take ${timeRanges[prepTimeRange] || 'any amount of time'}.`
+    }
+    
     if (healthGoals) {
       promptDetails += ` The recipe should support these health goals: ${healthGoals}.`
     }
@@ -66,7 +87,7 @@ export const generateRecipe = async (preferences) => {
 Return ONLY valid JSON with this exact structure (no markdown, no explanation):
 {"title":"Creative Recipe Name","description":"Appetizing description of the dish","prepTime":"X min","cookTime":"X min","servings":"X","ingredients":["quantity ingredient","quantity ingredient"],"instructions":["Detailed step 1","Detailed step 2"],"benefits":["Specific health benefit 1","Specific health benefit 2","Specific health benefit 3"],"nutritionInfo":{"calories":"XXX","protein":"XXg","carbs":"XXg","fiber":"Xg"},"micronutrients":{"vitamin_a":"X% DV","vitamin_c":"X% DV","iron":"X% DV","potassium":"X% DV","calcium":"X% DV"}}`
 
-    console.log('🍳 Generating recipe with preferences:', { mealType, dietary, cuisine, ingredients, healthGoals })
+    console.log('🍳 Generating recipe with preferences:', { mealType, dietary, cuisine, ingredients, healthGoals, feelLikeEating, excludeIngredients, prepTimeRange })
     const result = await model.generateContent(prompt)
     const text = result.response.text()
     console.log('📝 Got response:', text.substring(0, 150))
@@ -119,5 +140,77 @@ export const generateDevotional = async (theme = 'general wellness') => {
     
     console.log('📋 Using fallback devotional')
     return { devotional: fallbackDevotional, error: null }
+  }
+}
+
+export const generateInspiration = async (type, data) => {
+  try {
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        temperature: 0.9,
+      }
+    })
+
+    let prompt = ''
+    
+    if (type === 'goal') {
+      prompt = `You are creating inspirational content for a Christian wellness app called Temple Keepers. 
+      
+A user has set a goal: "${data.title}"${data.description ? ` - ${data.description}` : ''}
+Target: ${data.target_value} ${data.metric || ''}
+Current Progress: ${data.current_value || 0}/${data.target_value}
+
+Generate an uplifting, faith-based inspirational message to motivate them. Include:
+- A relevant Bible verse
+- Encouragement specific to their goal
+- Practical wisdom
+
+Keep it warm, personal, and faith-centered. Return ONLY valid JSON:
+{"message":"2-3 sentences of encouragement","scripture":"A relevant Bible verse (full text)","scriptureReference":"Book 1:1","wisdom":"One practical tip or insight"}`
+    } else if (type === 'habit') {
+      prompt = `You are creating inspirational content for a Christian wellness app called Temple Keepers.
+
+A user is building a habit: "${data.title}"
+${data.tiny_behavior ? `They will: ${data.tiny_behavior}` : ''}
+${data.cue ? `After: ${data.cue}` : ''}
+${data.reward ? `Celebrating with: ${data.reward}` : ''}
+Current Streak: ${data.current_streak || 0} days
+
+Generate an uplifting, faith-based inspirational message to encourage them. Include:
+- A relevant Bible verse
+- Encouragement specific to habit building
+- Practical wisdom about consistency
+
+Keep it warm, personal, and faith-centered. Return ONLY valid JSON:
+{"message":"2-3 sentences of encouragement","scripture":"A relevant Bible verse (full text)","scriptureReference":"Book 1:1","wisdom":"One practical tip about habit formation"}`
+    }
+
+    console.log(`✨ Generating ${type} inspiration...`)
+    const result = await model.generateContent(prompt)
+    const text = result.response.text()
+    
+    const inspiration = parseGeminiJSON(text)
+    console.log(`✅ Inspiration generated: ${inspiration.message.substring(0, 50)}...`)
+    return { inspiration, error: null }
+    
+  } catch (error) {
+    console.error('❌ Inspiration generation failed:', error.message)
+    
+    const fallbackInspiration = {
+      message: type === 'goal' 
+        ? "Your journey matters to God. Every step forward is a testament to your commitment to honor Him with your body, His temple. Keep moving forward with faith!"
+        : "Small, consistent steps lead to lasting transformation. God sees your faithfulness in the little things. Keep building this habit one day at a time!",
+      scripture: type === 'goal'
+        ? "Let us run with perseverance the race marked out for us, fixing our eyes on Jesus."
+        : "Whatever you do, work at it with all your heart, as working for the Lord.",
+      scriptureReference: type === 'goal' ? "Hebrews 12:1-2" : "Colossians 3:23",
+      wisdom: type === 'goal'
+        ? "Celebrate small wins along the way - progress, not perfection, is what matters."
+        : "Stack this habit with something you already do daily to make it automatic."
+    }
+    
+    console.log('📋 Using fallback inspiration')
+    return { inspiration: fallbackInspiration, error: null }
   }
 }

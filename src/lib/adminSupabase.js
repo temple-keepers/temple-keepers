@@ -9,7 +9,19 @@ export const checkIsAdmin = async (userId) => {
   console.log('🔍 Checking admin status for user:', userId)
   
   try {
-    // Get the current user's session which includes metadata
+    // Check admin_users table first (primary source of truth)
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    if (adminData && !adminError) {
+      console.log('✅ User is admin via database:', adminData)
+      return adminData
+    }
+
+    // Fallback to metadata check
     const { data: { user }, error } = await supabase.auth.getUser()
     
     if (error) {
