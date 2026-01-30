@@ -57,6 +57,15 @@ export const AuthProvider = ({ children }) => {
     console.log('🔧 Initializing minimal auth context...')
     let mounted = true
     
+    // Safety timeout - ensure we never get stuck on loading
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && initializing) {
+        console.warn('⚠️ Auth initialization timeout - forcing completion')
+        setLoading(false)
+        setInitializing(false)
+      }
+    }, 5000) // 5 second safety timeout
+    
     // Get initial session with retry logic
     const getInitialSession = async () => {
       try {
@@ -82,8 +91,10 @@ export const AuthProvider = ({ children }) => {
         if (mounted) setError(err.message)
       } finally {
         if (mounted) {
+          console.log('✅ Auth initialization complete')
           setLoading(false)
           setInitializing(false)
+          clearTimeout(safetyTimeout)
         }
       }
     }
@@ -146,6 +157,7 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       mounted = false
+      clearTimeout(safetyTimeout)
       subscription.unsubscribe()
     }
   }, [])
