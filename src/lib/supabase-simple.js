@@ -21,27 +21,14 @@ export const supabase = createClient(
       flowType: 'pkce',
       storageKey: 'temple-keepers-auth',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      // Add timeout and retry settings to prevent AbortError
       debug: process.env.NODE_ENV === 'development'
     },
     global: {
       headers: {
         'x-application-name': 'temple-keepers'
-      },
-      // Add timeout for network requests
-      fetch: (url, options = {}) => {
-        return fetch(url, {
-          ...options,
-          signal: AbortSignal.timeout(30000) // 30 second timeout
-        }).catch(error => {
-          if (error.name === 'AbortError') {
-            console.warn('Request timed out:', url)
-            // Convert AbortError to a more user-friendly error
-            throw new Error('Request timed out. Please check your connection.')
-          }
-          throw error
-        })
       }
+      // Removed custom fetch wrapper - was causing AbortError issues
+      // Supabase handles timeouts internally
     },
     db: {
       schema: 'public'
