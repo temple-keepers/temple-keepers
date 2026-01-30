@@ -56,15 +56,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     console.log('🔧 Initializing minimal auth context...')
     let mounted = true
+    let completed = false
     
     // Safety timeout - ensure we never get stuck on loading
     const safetyTimeout = setTimeout(() => {
-      if (mounted && initializing) {
+      if (mounted && !completed) {
         console.warn('⚠️ Auth initialization timeout - forcing completion')
         setLoading(false)
         setInitializing(false)
+        completed = true
       }
-    }, 5000) // 5 second safety timeout
+    }, 3000) // 3 second safety timeout
     
     // Get initial session with retry logic
     const getInitialSession = async () => {
@@ -72,7 +74,7 @@ export const AuthProvider = ({ children }) => {
         console.log('🔍 Checking for existing session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
-        if (!mounted) return
+        if (!mounted || completed) return
         
         if (error) {
           console.error('Session error:', error)
@@ -83,17 +85,16 @@ export const AuthProvider = ({ children }) => {
           await fetchUserData(session.user.id)
         } else {
           console.log('ℹ️ No active session found')
-          // Don't manually recover from storage - let Supabase handle it
-          // The supabase client is configured with storageKey: 'temple-keepers-auth'
         }
       } catch (err) {
         console.error('Error getting initial session:', err)
-        if (mounted) setError(err.message)
+        if (mounted && !completed) setError(err.message)
       } finally {
-        if (mounted) {
+        if (mounted && !completed) {
           console.log('✅ Auth initialization complete')
           setLoading(false)
           setInitializing(false)
+          completed = true
           clearTimeout(safetyTimeout)
         }
       }
