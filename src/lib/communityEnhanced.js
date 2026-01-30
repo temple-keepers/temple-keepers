@@ -549,9 +549,9 @@ export const checkIfSaved = async (postId, userId) => {
     .select('id')
     .eq('post_id', postId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     console.error('Error checking save status:', error)
   }
   return !!data

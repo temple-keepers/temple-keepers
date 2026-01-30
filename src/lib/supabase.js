@@ -514,9 +514,9 @@ export const getWaterLog = async (userId, date = getLocalDateString()) => {
     .select('*')
     .eq('user_id', userId)
     .eq('date', date)
-    .single()
+    .maybeSingle()
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
     console.error('Error fetching water log:', error)
   }
   return data || null
