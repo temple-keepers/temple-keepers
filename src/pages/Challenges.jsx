@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext-minimal'
 import { useTheme } from '../contexts/ThemeContext'
 import { getChallenges, getUserChallenges } from '../lib/challenges'
 import { 

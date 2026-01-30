@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { useAuth } from './AuthContext'
+import { useAuth } from './AuthContext-minimal'
 import { checkIsAdmin } from '../lib/adminSupabase'
 
 const AdminContext = createContext({})

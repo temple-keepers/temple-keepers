@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext-minimal'
 import { useTheme } from '../contexts/ThemeContext'
 import { getWaterLog, updateWaterLog, getWaterHistory } from '../lib/supabase'
 import FeatureGate from '../components/FeatureGate' 

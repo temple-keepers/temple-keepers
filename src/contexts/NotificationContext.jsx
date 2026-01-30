@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { useAuth } from './AuthContext'
+import { useAuth } from './AuthContext-minimal'
 import { supabase } from '../lib/supabase'
 import { 
   getNotifications, 

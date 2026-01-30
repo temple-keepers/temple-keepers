@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext-minimal'
 import { generateRecipe } from '../lib/gemini'
 import { saveRecipe, publishRecipe, incrementUserStat } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'

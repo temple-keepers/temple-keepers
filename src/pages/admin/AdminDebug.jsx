@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext-minimal'
 import { supabase } from '../../lib/supabase'
 
 const AdminDebug = () => {

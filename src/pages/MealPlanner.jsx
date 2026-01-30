@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/AuthContext-minimal'
 import { useTheme } from '../contexts/ThemeContext'
 import { getMealPlan, addMealToPlan, removeMealFromPlan, getUserRecipes, getShoppingList, getRecipeLibrary } from '../lib/supabase'
 import FeatureGate from '../components/FeatureGate'

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
-import { AuthProvider } from '../contexts/AuthContext'
+import { AuthProvider } from '../contexts/AuthContext-minimal'
 import { SecurityProvider } from '../contexts/SecurityContext'
 
 // Test utilities for rendering components with providers

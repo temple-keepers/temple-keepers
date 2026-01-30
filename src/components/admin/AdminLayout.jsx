@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext-minimal'
 import { useAdmin } from '../../contexts/AdminContext'
 import { LayoutDashboard, Users, ChefHat, BookOpen, Settings, LogOut, Menu, X, Shield, BarChart3, ArrowLeft, Zap } from 'lucide-react'
 
