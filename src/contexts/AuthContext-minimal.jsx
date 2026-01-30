@@ -74,21 +74,8 @@ export const AuthProvider = ({ children }) => {
           await fetchUserData(session.user.id)
         } else {
           console.log('ℹ️ No active session found')
-          // Check if we have session data in storage as backup
-          const storedSession = localStorage.getItem('sb-jdcrzdmbwfkozuhsoqbl-auth-token')
-          if (storedSession) {
-            console.log('🔄 Found stored session, attempting recovery...')
-            try {
-              const parsed = JSON.parse(storedSession)
-              if (parsed.user && parsed.access_token) {
-                console.log('✅ Recovered session for:', parsed.user.email)
-                setUser(parsed.user)
-                await fetchUserData(parsed.user.id)
-              }
-            } catch (parseErr) {
-              console.warn('Failed to parse stored session:', parseErr)
-            }
-          }
+          // Don't manually recover from storage - let Supabase handle it
+          // The supabase client is configured with storageKey: 'temple-keepers-auth'
         }
       } catch (err) {
         console.error('Error getting initial session:', err)
@@ -122,8 +109,11 @@ export const AuthProvider = ({ children }) => {
           setUser(null)
           setProfile(null)
           setError(null)
-          // Clear all storage
+          // Clear the correct storage key (matches supabase.js config)
           try {
+            localStorage.removeItem('temple-keepers-auth')
+            sessionStorage.removeItem('temple-keepers-auth')
+            // Also clear any legacy keys that might exist
             localStorage.removeItem('sb-jdcrzdmbwfkozuhsoqbl-auth-token')
             sessionStorage.removeItem('sb-jdcrzdmbwfkozuhsoqbl-auth-token')
           } catch (e) {
@@ -131,9 +121,20 @@ export const AuthProvider = ({ children }) => {
           }
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           console.log('🔄 Token refreshed for:', session.user.email)
-          setUser(session.user)
+          // Only update if it's the same user (prevent user switching)
+          setUser(prevUser => {
+            if (prevUser && prevUser.id !== session.user.id) {
+              console.warn('⚠️ Token refresh returned different user, ignoring')
+              return prevUser
+            }
+            return session.user
+          })
         } else if (event === 'INITIAL_SESSION') {
-          if (!session) {
+          if (session?.user) {
+            console.log('🔍 Initial session found:', session.user.email)
+            setUser(session.user)
+            await fetchUserData(session.user.id)
+          } else {
             console.log('ℹ️ No initial session')
           }
           setInitializing(false)
@@ -155,6 +156,17 @@ export const AuthProvider = ({ children }) => {
     setError(null)
     try {
       console.log('🔐 Attempting sign in for:', email)
+      
+      // First, sign out any existing session to prevent user mixing
+      await supabase.auth.signOut({ scope: 'local' })
+      
+      // Clear any stale session data
+      try {
+        localStorage.removeItem('temple-keepers-auth')
+        localStorage.removeItem('sb-jdcrzdmbwfkozuhsoqbl-auth-token')
+      } catch (e) {
+        console.warn('Failed to clear stale auth:', e)
+      }
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -190,12 +202,23 @@ export const AuthProvider = ({ children }) => {
     console.log('🚪 Signing out...')
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signOut()
+      // Use global scope to sign out from all devices/tabs
+      const { error } = await supabase.auth.signOut({ scope: 'global' })
       if (error) throw error
       
       setUser(null)
       setProfile(null)
       setError(null)
+      
+      // Clear all auth storage to prevent stale sessions
+      try {
+        localStorage.removeItem('temple-keepers-auth')
+        localStorage.removeItem('sb-jdcrzdmbwfkozuhsoqbl-auth-token')
+        sessionStorage.removeItem('temple-keepers-auth')
+        sessionStorage.removeItem('sb-jdcrzdmbwfkozuhsoqbl-auth-token')
+      } catch (e) {
+        console.warn('Failed to clear auth storage:', e)
+      }
     } catch (err) {
       console.error('Sign out error:', err)
       setError(err.message)
