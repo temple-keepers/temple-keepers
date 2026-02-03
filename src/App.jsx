@@ -7,6 +7,7 @@ import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
 import { Today } from './pages/Today'
+import { Profile } from './pages/Profile'
 import { Programs } from './pages/Programs'
 import { ProgramDetail } from './pages/ProgramDetail'
 import { ProgramDay } from './pages/ProgramDay'
@@ -122,6 +123,12 @@ function AppRoutes() {
       <Route path="/today" element={
         <ProtectedRoute>
           <Today />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <Profile />
         </ProtectedRoute>
       } />
       

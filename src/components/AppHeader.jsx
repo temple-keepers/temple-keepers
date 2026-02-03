@@ -1,7 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
-import { Home, Calendar, ChefHat, BookOpen, LogOut, Sun, Moon, ArrowLeft } from 'lucide-react'
+import { Home, Calendar, ChefHat, BookOpen, LogOut, Sun, Moon, ArrowLeft, User } from 'lucide-react'
 
 export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) => {
   const navigate = useNavigate()
@@ -128,6 +128,14 @@ export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) 
                     {profile?.email}
                   </p>
                 </div>
+                
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" />
+                  <span>My Profile</span>
+                </button>
                 
                 {profile?.role === 'admin' && (
                   <button
