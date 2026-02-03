@@ -2,16 +2,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
-import { ArrowLeft, Clock, Users, Heart, BookOpen, ChefHat } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { Clock, Users, Heart, BookOpen, ChefHat, Pencil, Trash2 } from 'lucide-react'
 
 export const RecipeDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { getRecipe, addToFavorites, removeFromFavorites, isFavorited } = useRecipes()
+  const { user, profile } = useAuth()
+  const { getRecipe, addToFavorites, removeFromFavorites, isFavorited, deleteRecipe } = useRecipes()
   
   const [recipe, setRecipe] = useState(null)
   const [loading, setLoading] = useState(true)
   const [favorited, setFavorited] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [servings, setServings] = useState(4) // Adjusted servings
   const [originalServings, setOriginalServings] = useState(4) // Original from recipe
 
@@ -46,6 +49,23 @@ export const RecipeDetail = () => {
       await addToFavorites(id)
       setFavorited(true)
     }
+  }
+
+  const handleDeleteRecipe = async () => {
+    if (!confirm('Delete this recipe? This action cannot be undone.')) {
+      return
+    }
+
+    setDeleting(true)
+    const { error } = await deleteRecipe(id)
+    setDeleting(false)
+
+    if (error) {
+      alert(`Failed to delete recipe: ${error.message || 'Unknown error'}`)
+      return
+    }
+
+    navigate('/recipes')
   }
 
   // Calculate adjusted ingredient amounts
@@ -96,6 +116,8 @@ export const RecipeDetail = () => {
 
   if (!recipe) return null
 
+  const canManage = user && (profile?.role === 'admin' || recipe.created_by === user.id)
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -103,7 +125,7 @@ export const RecipeDetail = () => {
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div className="flex-1">
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-gray-900 dark:text-white mb-2">
               {recipe.title}
@@ -112,20 +134,43 @@ export const RecipeDetail = () => {
               {recipe.description}
             </p>
           </div>
-          
-          <button
-            onClick={handleToggleFavorite}
-            className={`
-              ml-4 p-3 rounded-full transition-colors flex-shrink-0
-              ${favorited
-                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }
-            `}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {canManage && (
+              <>
+                <button
+                  onClick={() => navigate(`/recipes/${id}/edit`)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-white/70 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={handleDeleteRecipe}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={handleToggleFavorite}
+              className={`
+                p-3 rounded-full transition-colors flex-shrink-0
+                ${favorited
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }
+              `}
+              aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
             >
               <Heart className={`w-6 h-6 ${favorited ? 'fill-current' : ''}`} />
             </button>
           </div>
+        </div>
         </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">

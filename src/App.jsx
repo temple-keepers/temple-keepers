@@ -13,6 +13,7 @@ import { ProgramDetail } from './pages/ProgramDetail'
 import { ProgramDay } from './pages/ProgramDay'
 import { Recipes } from './pages/Recipes'
 import { RecipeDetail } from './pages/RecipeDetail'
+import { RecipeEdit } from './pages/RecipeEdit'
 import { RecipeGenerator } from './pages/RecipeGenerator'
 import { Roadmap } from './pages/Roadmap'
 import { AboutDenise } from './pages/AboutDenise'
@@ -167,6 +168,12 @@ function AppRoutes() {
       <Route path="/recipes/:id" element={
         <ProtectedRoute>
           <RecipeDetail />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/recipes/:id/edit" element={
+        <ProtectedRoute>
+          <RecipeEdit />
         </ProtectedRoute>
       } />
       
