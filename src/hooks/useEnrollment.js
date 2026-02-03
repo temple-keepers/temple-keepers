@@ -15,19 +15,7 @@ export const useEnrollment = () => {
     
     const { data, error } = await supabase
       .from('program_enrollments')
-      .select(`
-        *,
-        programs (
-          id,
-          title,
-          slug,
-          description,
-          duration_days,
-          program_type,
-          includes_fasting,
-          cover_image_url
-        )
-      `)
+      .select('*, programs(id, title, slug, description, duration_days, program_type, includes_fasting, cover_image_url)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
@@ -45,19 +33,7 @@ export const useEnrollment = () => {
 
     const { data, error } = await supabase
       .from('program_enrollments')
-      .select(`
-        *,
-        programs (
-          id,
-          title,
-          slug,
-          description,
-          duration_days,
-          program_type,
-          includes_fasting,
-          cover_image_url
-        )
-      `)
+      .select('*, programs(id, title, slug, description, duration_days, program_type, includes_fasting, cover_image_url)')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -71,10 +47,7 @@ export const useEnrollment = () => {
 
     const { data, error } = await supabase
       .from('program_enrollments')
-      .select(`
-        *,
-        programs (*)
-      `)
+      .select('*, programs(*)')
       .eq('user_id', user.id)
       .eq('program_id', programId)
       .eq('status', 'active')
