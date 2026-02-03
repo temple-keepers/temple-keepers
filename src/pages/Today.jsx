@@ -311,62 +311,85 @@ export const Today = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {activePrograms.map((enrollment) => (
-                <div
-                  key={enrollment.id}
-                  onClick={() => navigate(`/programs/${enrollment.programs.slug}/day/${enrollment.current_day}`)}
-                  className="group relative p-6 rounded-xl bg-gradient-to-br from-temple-purple/10 to-temple-purple/5 dark:from-temple-gold/10 dark:to-temple-gold/5 border-2 border-temple-purple/20 dark:border-temple-gold/20 cursor-pointer hover:border-temple-purple dark:hover:border-temple-gold hover:scale-[1.02] transition-all"
-                >
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                          {enrollment.programs.title}
-                        </h3>
-                        {enrollment.fasting_type && (
-                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-400">
-                            <BookOpen className="w-3 h-3" />
-                            <span className="capitalize">{enrollment.fasting_type} Fast</span>
-                          </div>
-                        )}
+              {activePrograms.map((enrollment) => {
+                // Calculate next uncompleted day for navigation
+                const completedDaysSet = new Set(enrollment.completed_days || [])
+                const startDate = new Date(enrollment.start_date)
+                const today = new Date()
+                const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+                const maxUnlockedDay = Math.min(daysSinceStart + 1, enrollment.programs.duration_days)
+                
+                // Find first uncompleted day within unlocked range
+                let nextDay = 1
+                for (let i = 1; i <= maxUnlockedDay; i++) {
+                  if (!completedDaysSet.has(i)) {
+                    nextDay = i
+                    break
+                  }
+                }
+                
+                // If all unlocked days are complete, show the latest unlocked day
+                if (completedDaysSet.has(nextDay) && nextDay < maxUnlockedDay) {
+                  nextDay = maxUnlockedDay
+                }
+                
+                return (
+                  <div
+                    key={enrollment.id}
+                    onClick={() => navigate(`/programs/${enrollment.programs.slug}/day/${nextDay}`)}
+                    className="group relative p-6 rounded-xl bg-gradient-to-br from-temple-purple/10 to-temple-purple/5 dark:from-temple-gold/10 dark:to-temple-gold/5 border-2 border-temple-purple/20 dark:border-temple-gold/20 cursor-pointer hover:border-temple-purple dark:hover:border-temple-gold hover:scale-[1.02] transition-all"
+                  >
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                            {enrollment.programs.title}
+                          </h3>
+                          {enrollment.fasting_type && (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-400">
+                              <BookOpen className="w-3 h-3" />
+                              <span className="capitalize">{enrollment.fasting_type} Fast</span>
+                            </div>
+                          )}
+                        </div>
+                        <ArrowRight className="w-5 h-5 text-temple-purple dark:text-temple-gold flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                       </div>
-                      <ArrowRight className="w-5 h-5 text-temple-purple dark:text-temple-gold flex-shrink-0 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                    
-                    <div className="space-y-2 mb-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-gray-700 dark:text-gray-300">
-                          Day {enrollment.current_day} of {enrollment.programs.duration_days}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {Math.round((enrollment.current_day / enrollment.programs.duration_days) * 100)}% complete
-                        </span>
+                      
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            {enrollment.completed_days?.length || 0} of {enrollment.programs.duration_days} days complete
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {Math.round(((enrollment.completed_days?.length || 0) / enrollment.programs.duration_days) * 100)}% complete
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 transition-all rounded-full"
+                            style={{ width: `${((enrollment.completed_days?.length || 0) / enrollment.programs.duration_days) * 100}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 transition-all rounded-full"
-                          style={{ width: `${(enrollment.current_day / enrollment.programs.duration_days) * 100}%` }}
-                        />
+                      
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-temple-purple/20 dark:border-temple-gold/20">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-temple-purple/20 dark:bg-temple-gold/20 flex items-center justify-center">
+                          <span className="text-sm font-bold text-temple-purple dark:text-temple-gold">
+                            {nextDay}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Next Step</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                            {completedDaysSet.has(nextDay) ? `Review Day ${nextDay}` : `Continue Day ${nextDay}`}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-temple-purple dark:text-temple-gold flex-shrink-0" />
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-temple-purple/20 dark:border-temple-gold/20">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-temple-purple/20 dark:bg-temple-gold/20 flex items-center justify-center">
-                        <span className="text-sm font-bold text-temple-purple dark:text-temple-gold">
-                          {enrollment.current_day}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Next Step</p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                          Continue Day {enrollment.current_day}
-                        </p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-temple-purple dark:text-temple-gold flex-shrink-0" />
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
+import { AppHeader } from '../components/AppHeader'
 import { Plus, Search, Clock, Users, Heart, Sparkles } from 'lucide-react'
 
 export const Recipes = () => {
@@ -52,30 +53,28 @@ export const Recipes = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-display font-bold gradient-text mb-2">
-                Recipes
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Faith-inspired, nourishing meals for body and soul
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/recipes/generate')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span>Generate Recipe</span>
-            </button>
-          </div>
+      <AppHeader title="Recipes" />
 
-          {/* Search & Filters */}
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="flex gap-2">
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-gray-600 dark:text-gray-400">
+            Faith-inspired, nourishing meals for body and soul
+          </p>
+          <button
+            onClick={() => navigate('/recipes/generate')}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Sparkles className="w-5 h-5" />
+            <span className="hidden sm:inline">Generate Recipe</span>
+            <span className="sm:hidden">Generate</span>
+          </button>
+        </div>
+
+        {/* Search & Filters */}
+        <div className="space-y-4 mb-8">
+          {/* Search Bar */}
+          <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input

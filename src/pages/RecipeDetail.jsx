@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
+import { AppHeader } from '../components/AppHeader'
 import { ArrowLeft, Clock, Users, Heart, BookOpen, ChefHat } from 'lucide-react'
 
 export const RecipeDetail = () => {
@@ -98,35 +99,29 @@ export const RecipeDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-5xl mx-auto px-4 py-6">
-          <button
-            onClick={() => navigate('/recipes')}
-            className="flex items-center gap-2 text-sm text-temple-purple dark:text-temple-gold hover:underline mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Recipes
-          </button>
+      <AppHeader showBackButton={true} backTo="/recipes" />
+
+      {/* Content */}
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex-1">
+            <h1 className="text-3xl sm:text-4xl font-display font-bold text-gray-900 dark:text-white mb-2">
+              {recipe.title}
+            </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              {recipe.description}
+            </p>
+          </div>
           
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h1 className="text-4xl font-display font-bold text-gray-900 dark:text-white mb-2">
-                {recipe.title}
-              </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                {recipe.description}
-              </p>
-            </div>
-            
-            <button
-              onClick={handleToggleFavorite}
-              className={`
-                p-3 rounded-full transition-colors
-                ${favorited
-                  ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }
-              `}
+          <button
+            onClick={handleToggleFavorite}
+            className={`
+              ml-4 p-3 rounded-full transition-colors flex-shrink-0
+              ${favorited
+                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }
+            `}
             >
               <Heart className={`w-6 h-6 ${favorited ? 'fill-current' : ''}`} />
             </button>

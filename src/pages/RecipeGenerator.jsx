@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { generateRecipe } from '../lib/recipeAI'
 import { useRecipes } from '../hooks/useRecipes'
+import { AppHeader } from '../components/AppHeader'
 import { ArrowLeft, Sparkles, Clock, Users, ChefHat, Book } from 'lucide-react'
 
 export const RecipeGenerator = () => {
@@ -101,25 +102,13 @@ export const RecipeGenerator = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <button
-            onClick={() => navigate('/recipes')}
-            className="flex items-center gap-2 text-sm text-temple-purple dark:text-temple-gold hover:underline mb-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Recipes
-          </button>
-          <h1 className="text-3xl font-display font-bold gradient-text">
-            AI Recipe Generator
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Create custom recipes with scripture-based inspiration
-          </p>
-        </div>
-      </div>
+      <AppHeader title="AI Recipe Generator" showBackButton={true} backTo="/recipes" />
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        <p className="text-gray-600 dark:text-gray-400 mb-8">
+          Create custom recipes with scripture-based inspiration
+        </p>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           {/* Generator Form */}

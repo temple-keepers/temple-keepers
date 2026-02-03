@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEnrollment } from '../hooks/useEnrollment'
+import { AppHeader } from '../components/AppHeader'
 import { BookOpen, Calendar, Clock, Check } from 'lucide-react'
 
 export const Programs = () => {
@@ -51,25 +52,13 @@ export const Programs = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <button
-            onClick={() => navigate('/today')}
-            className="text-sm text-temple-purple dark:text-temple-gold hover:underline mb-4"
-          >
-            ← Back to Today
-          </button>
-          <h1 className="text-4xl font-display font-bold gradient-text mb-2">
-            Programs
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Faith-based wellness journeys to transform your life
-          </p>
-        </div>
-      </div>
+      <AppHeader title="Programs" />
 
       {/* Programs Grid */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <p className="text-gray-600 dark:text-gray-400 mb-8">
+          Faith-based wellness journeys to transform your life
+        </p>
         {programs.length === 0 ? (
           <div className="glass-card p-12 text-center">
             <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />

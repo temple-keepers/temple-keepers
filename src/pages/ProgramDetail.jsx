@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEnrollment } from '../hooks/useEnrollment'
+import { StartDateModal } from '../components/StartDateModal'
+import { AppHeader } from '../components/AppHeader'
 import { ArrowLeft, Calendar, Clock, BookOpen, Check } from 'lucide-react'
 
 export const ProgramDetail = () => {
@@ -15,6 +17,7 @@ export const ProgramDetail = () => {
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
   const [selectedFasting, setSelectedFasting] = useState(null)
+  const [showStartDateModal, setShowStartDateModal] = useState(false)
 
   useEffect(() => {
     loadProgram()
@@ -63,22 +66,15 @@ export const ProgramDetail = () => {
     setLoading(false)
   }
 
-  const handleEnroll = async () => {
+  const handleEnroll = () => {
+    setShowStartDateModal(true)
+  }
+
+  const handleStartDateConfirm = async (startDate) => {
     if (!program) return
     
+    setShowStartDateModal(false)
     setEnrolling(true)
-    
-    // User chooses start date
-    const startNow = window.confirm('Start this program today? Click OK to start today, or Cancel to choose a start date.')
-    
-    let startDate = new Date().toISOString().split('T')[0] // Today
-    
-    if (!startNow) {
-      const dateInput = prompt('Enter start date (YYYY-MM-DD):', startDate)
-      if (dateInput) {
-        startDate = dateInput
-      }
-    }
     
     const { data, error } = await enrollInProgram(
       program.id, 
@@ -98,7 +94,28 @@ export const ProgramDetail = () => {
 
   const handleContinue = () => {
     if (enrollment) {
-      navigate(`/programs/${program.slug}/day/${enrollment.current_day}`)
+      // Calculate next uncompleted day
+      const completedDaysSet = new Set(enrollment.completed_days || [])
+      const startDate = new Date(enrollment.start_date)
+      const today = new Date()
+      const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+      const maxUnlockedDay = Math.min(daysSinceStart + 1, program.duration_days)
+      
+      // Find first uncompleted day within unlocked range
+      let nextDay = 1
+      for (let i = 1; i <= maxUnlockedDay; i++) {
+        if (!completedDaysSet.has(i)) {
+          nextDay = i
+          break
+        }
+      }
+      
+      // If all unlocked days are complete, show the latest unlocked day
+      if (completedDaysSet.has(nextDay) && nextDay < maxUnlockedDay) {
+        nextDay = maxUnlockedDay
+      }
+      
+      navigate(`/programs/${program.slug}/day/${nextDay}`)
     }
   }
 
@@ -115,17 +132,12 @@ export const ProgramDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
+      <AppHeader showBackButton={true} backTo="/programs" />
+
+      {/* Program Header Section */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <button
-            onClick={() => navigate('/programs')}
-            className="flex items-center gap-2 text-sm text-temple-purple dark:text-temple-gold hover:underline mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Programs
-          </button>
-          
-          <h1 className="text-4xl font-display font-bold gradient-text mb-4">
+          <h1 className="text-3xl sm:text-4xl font-display font-bold gradient-text mb-4">
             {program.title}
           </h1>
           
@@ -295,6 +307,14 @@ export const ProgramDetail = () => {
           </p>
         </div>
       </div>
+
+      {/* Start Date Modal */}
+      <StartDateModal
+        isOpen={showStartDateModal}
+        onClose={() => setShowStartDateModal(false)}
+        onConfirm={handleStartDateConfirm}
+        programTitle={program?.title}
+      />
     </div>
   )
 }

@@ -112,6 +112,7 @@ export const useUserPrograms = () => {
         program_id: programId,
         start_date: new Date().toISOString().split('T')[0],
         current_day: 1,
+        completed_days: [], // Initialize as empty array
         fasting_type: fastingType,
         status: 'active'
       }])
