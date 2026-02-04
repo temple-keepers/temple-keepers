@@ -114,7 +114,6 @@ export const Recipes = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Recipe Grid */}
       <div className="max-w-7xl mx-auto px-4 py-8">

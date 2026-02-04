@@ -70,7 +70,7 @@ export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) 
                   const Icon = item.icon
                   const active = isActive(item.path)
                   return (
-                    <button key={item.path} onClick={() => navigate(item.path)} className={\`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors \${active ? 'bg-temple-purple/10 dark:bg-temple-gold/10 text-temple-purple dark:text-temple-gold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}\`}>
+                    <button key={item.path} onClick={() => navigate(item.path)} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-temple-purple/10 dark:bg-temple-gold/10 text-temple-purple dark:text-temple-gold' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                       <Icon className="w-4 h-4" />
                       <span>{item.label}</span>
                     </button>
@@ -135,7 +135,7 @@ export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) 
                 const Icon = item.icon
                 const active = isActive(item.path)
                 return (
-                  <button key={item.path} onClick={() => handleNavigation(item.path)} className={\`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all \${active ? 'bg-temple-purple dark:bg-temple-gold text-white shadow-md font-semibold scale-105' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}\`}>
+                  <button key={item.path} onClick={() => handleNavigation(item.path)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all ${active ? 'bg-temple-purple dark:bg-temple-gold text-white shadow-md font-semibold scale-105' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                     <Icon className="w-5 h-5 flex-shrink-0" />
                     <span className="text-base">{item.label}</span>
                   </button>
