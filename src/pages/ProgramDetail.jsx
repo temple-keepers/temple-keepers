@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEnrollment } from '../hooks/useEnrollment'
 import { StartDateModal } from '../components/StartDateModal'
+import { FastingTypeSelector } from '../features/fasting/components/FastingTypeSelector'
+import { useActiveCohorts } from '../features/fasting/hooks/useFasting'
 import { AppHeader } from '../components/AppHeader'
 import { ArrowLeft, Calendar, Clock, BookOpen, Check } from 'lucide-react'
 
@@ -16,8 +18,12 @@ export const ProgramDetail = () => {
   const [enrollment, setEnrollment] = useState(null)
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
-  const [selectedFasting, setSelectedFasting] = useState(null)
   const [showStartDateModal, setShowStartDateModal] = useState(false)
+  const [showFastingSelector, setShowFastingSelector] = useState(false)
+  const [fastingSelection, setFastingSelection] = useState(null)
+  
+  // Get active cohorts for fasting programs
+  const { cohorts } = useActiveCohorts(program?.id)
 
   useEffect(() => {
     loadProgram()
@@ -58,15 +64,21 @@ export const ProgramDetail = () => {
       setEnrollment(enrollmentData)
     }
     
-    // Set default fasting type
-    if (programData.includes_fasting && programData.fasting_types?.length > 0) {
-      setSelectedFasting(programData.fasting_types[0])
-    }
-    
     setLoading(false)
   }
 
   const handleEnroll = () => {
+    // If fasting program, show fasting selector first
+    if (program?.program_type === 'fasting') {
+      setShowFastingSelector(true)
+    } else {
+      setShowStartDateModal(true)
+    }
+  }
+
+  const handleFastingSelect = (selection) => {
+    setFastingSelection(selection)
+    setShowFastingSelector(false)
     setShowStartDateModal(true)
   }
 
@@ -76,11 +88,22 @@ export const ProgramDetail = () => {
     setShowStartDateModal(false)
     setEnrolling(true)
     
-    const { data, error } = await enrollInProgram(
-      program.id, 
-      program.includes_fasting ? selectedFasting : null,
-      startDate
-    )
+    // For fasting programs, add cohort and fasting type
+    const enrollmentData = {
+      program_id: program.id,
+      start_date: startDate
+    }
+
+    if (program.program_type === 'fasting' && fastingSelection) {
+      enrollmentData.fasting_type = fastingSelection.fasting_type
+      enrollmentData.fasting_window = fastingSelection.fasting_window
+      // Use first available cohort
+      if (cohorts && cohorts.length > 0) {
+        enrollmentData.cohort_id = cohorts[0].id
+      }
+    }
+    
+    const { data, error } = await enrollInProgram(enrollmentData)
     
     if (!error && data) {
       // Navigate to Day 1
@@ -155,10 +178,10 @@ export const ProgramDetail = () => {
               <Clock className="w-5 h-5" />
               <span className="font-medium">20-30 min/day</span>
             </div>
-            {program.includes_fasting && (
+            {(program.program_type === 'fasting' || program.program_type === 'hybrid') && (
               <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                 <BookOpen className="w-5 h-5" />
-                <span className="font-medium">Includes fasting</span>
+                <span className="font-medium">{program.has_live_sessions ? 'Fasting + Live Sessions' : 'Includes Fasting'}</span>
               </div>
             )}
           </div>
@@ -172,52 +195,13 @@ export const ProgramDetail = () => {
               Continue Program (Day {enrollment.current_day})
             </button>
           ) : (
-            <>
-              {program.includes_fasting && program.fasting_types?.length > 0 && (
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Choose Your Fasting Type:
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {program.fasting_types.map(type => (
-                      <button
-                        key={type}
-                        onClick={() => setSelectedFasting(type)}
-                        className={`
-                          p-4 rounded-lg border-2 text-left transition-all capitalize
-                          ${selectedFasting === type
-                            ? 'border-temple-purple bg-temple-purple/10 dark:border-temple-gold dark:bg-temple-gold/10'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-temple-purple/50'
-                          }
-                        `}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          {selectedFasting === type && (
-                            <Check className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
-                          )}
-                          <span className="font-semibold text-gray-900 dark:text-white">
-                            {type} Fast
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {type === 'daylight' && 'Eat between 6pm-6am'}
-                          {type === 'daniel' && 'Whole foods only, no sugar/meat'}
-                          {type === 'media' && 'No social media or news'}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <button
-                onClick={handleEnroll}
-                disabled={enrolling}
-                className="btn-primary"
-              >
-                {enrolling ? 'Enrolling...' : 'Start This Program'}
-              </button>
-            </>
+            <button
+              onClick={handleEnroll}
+              disabled={enrolling}
+              className="btn-primary"
+            >
+              {enrolling ? 'Enrolling...' : 'Start This Program'}
+            </button>
           )}
         </div>
       </div>
@@ -245,10 +229,16 @@ export const ProgramDetail = () => {
                 <span className="text-temple-purple dark:text-temple-gold mt-1">•</span>
                 <span><strong>Prayer</strong> — Guided prayer prompt</span>
               </li>
-              {program.includes_fasting && (
+              {(program.program_type === 'fasting' || program.program_type === 'hybrid') && (
                 <li className="flex items-start gap-2">
                   <span className="text-temple-purple dark:text-temple-gold mt-1">•</span>
-                  <span><strong>Fasting Encouragement</strong> — Gentle reminders</span>
+                  <span><strong>Fasting Tracker</strong> — Daily compliance tracking</span>
+                </li>
+              )}
+              {program.has_live_sessions && (
+                <li className="flex items-start gap-2">
+                  <span className="text-temple-purple dark:text-temple-gold mt-1">•</span>
+                  <span><strong>Live Sessions</strong> — Weekly Zoom gatherings</span>
                 </li>
               )}
               <li className="flex items-start gap-2">
@@ -307,6 +297,14 @@ export const ProgramDetail = () => {
           </p>
         </div>
       </div>
+
+      {/* Fasting Type Selector Modal */}
+      {showFastingSelector && (
+        <FastingTypeSelector
+          onSelect={handleFastingSelect}
+          onClose={() => setShowFastingSelector(false)}
+        />
+      )}
 
       {/* Start Date Modal */}
       <StartDateModal

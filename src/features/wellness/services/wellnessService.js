@@ -19,6 +19,8 @@ export const wellnessService = {
   async getCheckIns(userId, options = {}) {
     const { startDate, endDate, limit = 30 } = options;
     
+    console.log('🔍 getCheckIns CALLED:', { userId, startDate, endDate, limit });
+    
     let query = supabase
       .from('wellness_check_ins')
       .select('*')
@@ -27,16 +29,25 @@ export const wellnessService = {
       .limit(limit);
     
     if (startDate) {
+      console.log('📅 Adding startDate filter:', startDate);
       query = query.gte('check_in_date', startDate);
     }
     
     if (endDate) {
+      console.log('📅 Adding endDate filter:', endDate);
       query = query.lte('check_in_date', endDate);
     }
     
+    console.log('🚀 Executing query...');
     const { data, error } = await query;
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Query error:', error);
+      throw error;
+    }
+    
+    console.log('✅ Query result:', data?.length || 0, 'records');
+    console.log('📊 Data:', data);
     return data;
   },
 
@@ -99,6 +110,24 @@ export const wellnessService = {
       .eq('id', checkInId);
     
     if (error) throw error;
+  },
+
+  /**
+   * Save a check-in (upsert: update if exists, create if not)
+   */
+  async saveCheckIn(userId, checkInData) {
+    const checkInDate = checkInData.check_in_date || new Date().toISOString().split('T')[0];
+    
+    // Check if check-in exists for this date
+    const existing = await this.getCheckInByDate(userId, checkInDate);
+    
+    if (existing) {
+      // Update existing check-in
+      return await this.updateCheckIn(existing.id, checkInData);
+    } else {
+      // Create new check-in
+      return await this.createCheckIn(userId, { ...checkInData, check_in_date: checkInDate });
+    }
   },
 
   // ============================================
@@ -204,25 +233,22 @@ export const wellnessService = {
    * Get symptom logs for a user
    */
   async getSymptomLogs(userId, options = {}) {
-    const { startDate, endDate, symptomType, limit = 50 } = options;
+    const { startDate, endDate, limit = 50 } = options;
     
     let query = supabase
       .from('symptom_logs')
-      .select('*, meal_logs(description, meal_type, meal_date)')
+      .select('*')
       .eq('user_id', userId)
-      .order('logged_at', { ascending: false })
+      .order('log_date', { ascending: false })
+      .order('log_time', { ascending: false })
       .limit(limit);
     
     if (startDate) {
-      query = query.gte('logged_at', startDate);
+      query = query.gte('log_date', startDate);
     }
     
     if (endDate) {
-      query = query.lte('logged_at', endDate);
-    }
-    
-    if (symptomType) {
-      query = query.eq('symptom_type', symptomType);
+      query = query.lte('log_date', endDate);
     }
     
     const { data, error } = await query;
@@ -235,16 +261,28 @@ export const wellnessService = {
    * Create a new symptom log
    */
   async createSymptomLog(userId, symptomData) {
+    console.log('Creating symptom log:', { userId, symptomData });
+    
     const { data, error } = await supabase
       .from('symptom_logs')
       .insert({
         user_id: userId,
-        ...symptomData,
+        log_date: symptomData.log_date,
+        log_time: symptomData.log_time,
+        symptom: symptomData.symptom,
+        severity: symptomData.severity,
+        notes: symptomData.notes || null,
+        duration_minutes: symptomData.duration_minutes || null
       })
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating symptom log:', error);
+      throw error;
+    }
+    
+    console.log('Symptom log created:', data);
     return data;
   },
 

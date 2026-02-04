@@ -57,8 +57,25 @@ export const useEnrollment = () => {
   }
 
   // Enroll in program
-  const enrollInProgram = async (programId, fastingType = null, startDate = null) => {
+  const enrollInProgram = async (enrollmentData) => {
     if (!user) return { data: null, error: new Error('Not authenticated') }
+
+    // Support both old format (programId, fastingType, startDate) and new format (enrollmentData object)
+    let programId, startDate, fastingType, fastingWindow, cohortId
+    
+    if (typeof enrollmentData === 'object' && enrollmentData.program_id) {
+      // New format: object with all data
+      programId = enrollmentData.program_id
+      startDate = enrollmentData.start_date
+      fastingType = enrollmentData.fasting_type
+      fastingWindow = enrollmentData.fasting_window
+      cohortId = enrollmentData.cohort_id
+    } else {
+      // Old format: separate parameters (backwards compatibility)
+      programId = arguments[0]
+      fastingType = arguments[1]
+      startDate = arguments[2]
+    }
 
     // Use provided start date or default to today
     const enrollmentStartDate = startDate || new Date().toISOString().split('T')[0]
@@ -76,15 +93,21 @@ export const useEnrollment = () => {
         return { data: null, error: new Error('Already enrolled in this program') }
       } else {
         // Reactivate enrollment
+        const updateData = { 
+          status: 'active',
+          start_date: enrollmentStartDate,
+          current_day: 1,
+          completed_days: []
+        }
+        
+        // Add fasting data if provided
+        if (fastingType) updateData.fasting_type = fastingType
+        if (fastingWindow) updateData.fasting_window = fastingWindow
+        if (cohortId) updateData.cohort_id = cohortId
+        
         const { data, error } = await supabase
           .from('program_enrollments')
-          .update({ 
-            status: 'active',
-            start_date: enrollmentStartDate,
-            current_day: 1,
-            fasting_type: fastingType,
-            completed_days: []
-          })
+          .update(updateData)
           .eq('id', existing.id)
           .select()
           .single()
@@ -98,17 +121,24 @@ export const useEnrollment = () => {
     }
 
     // Create new enrollment
+    const insertData = {
+      user_id: user.id,
+      program_id: programId,
+      start_date: enrollmentStartDate,
+      current_day: 1,
+      status: 'active',
+      completed_days: [],
+      enrollment_round: 1
+    }
+    
+    // Add fasting data if provided
+    if (fastingType) insertData.fasting_type = fastingType
+    if (fastingWindow) insertData.fasting_window = fastingWindow
+    if (cohortId) insertData.cohort_id = cohortId
+    
     const { data, error } = await supabase
       .from('program_enrollments')
-      .insert([{
-        user_id: user.id,
-        program_id: programId,
-        start_date: enrollmentStartDate,
-        current_day: 1,
-        fasting_type: fastingType,
-        status: 'active',
-        completed_days: []
-      }])
+      .insert([insertData])
       .select()
       .single()
 

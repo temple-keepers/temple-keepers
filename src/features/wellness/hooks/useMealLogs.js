@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { wellnessService } from '../services/wellnessService';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 /**
  * Custom hook for managing meal logs
@@ -13,16 +13,20 @@ export const useMealLogs = (options = {}) => {
 
   // Fetch meal logs
   const fetchMealLogs = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
       setError(null);
       const data = await wellnessService.getMealLogs(user.id, options);
-      setMealLogs(data);
+      setMealLogs(data || []);
     } catch (err) {
       console.error('Error fetching meal logs:', err);
       setError(err.message);
+      setMealLogs([]);
     } finally {
       setLoading(false);
     }
@@ -31,7 +35,7 @@ export const useMealLogs = (options = {}) => {
   // Fetch on mount and when options change
   useEffect(() => {
     fetchMealLogs();
-  }, [user, JSON.stringify(options)]);
+  }, [user?.id, options?.startDate, options?.endDate, options?.limit]);
 
   // Get meal logs for a specific date
   const getMealLogsByDate = async (date) => {

@@ -4,11 +4,15 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useTodayLog } from '../hooks/useTodayLog'
 import { useDevotional } from '../hooks/useDevotional'
 import { useEnrollment } from '../hooks/useEnrollment'
-import { CheckInModal } from '../components/CheckInModal'
-import { MealLogModal } from '../components/MealLogModal'
-import { AppHeader } from '../components/AppHeader'
-import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat } from 'lucide-react'
+import { CheckInForm } from '../features/wellness/components/CheckInForm'
+import { MealLogForm } from '../features/wellness/components/MealLogForm'
+import { SymptomLogForm } from '../features/wellness/components/SymptomLogForm'
+import { BottomNav } from '../components/BottomNav'
+import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
+import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
+import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { wellnessService } from '../features/wellness/services/wellnessService'
 
 export const Today = () => {
   const { user, profile, signOut } = useAuth()
@@ -20,11 +24,18 @@ export const Today = () => {
   const [timeIcon, setTimeIcon] = useState(Sun)
   const [showCheckInModal, setShowCheckInModal] = useState(false)
   const [showMealModal, setShowMealModal] = useState(false)
+  const [showSymptomModal, setShowSymptomModal] = useState(false)
   const [activePrograms, setActivePrograms] = useState([])
+  const [existingCheckIn, setExistingCheckIn] = useState(null)
   const navigate = useNavigate()
 
   // Get today's summary
   const summary = getSummary()
+
+  // Detect fasting enrollment and get live session
+  const fastingEnrollment = activePrograms.find(e => e.cohort_id)
+  const { session: nextSession } = useNextSession(fastingEnrollment?.cohort_id)
+  const { cohort } = useCohort(fastingEnrollment?.cohort_id)
 
   // Load active programs
   useEffect(() => {
@@ -40,21 +51,62 @@ export const Today = () => {
     }
   }
 
+  // Open check-in modal and load existing data
+  const openCheckInModal = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const existing = await wellnessService.getCheckInByDate(user.id, today)
+      setExistingCheckIn(existing)
+      setShowCheckInModal(true)
+    } catch (error) {
+      console.error('Error loading existing check-in:', error)
+      setExistingCheckIn(null)
+      setShowCheckInModal(true)
+    }
+  }
+
   // Handle check-in save
-  const handleCheckInSave = async (entryData) => {
-    const { error } = await addEntry('mood', entryData)
-    if (!error) {
-      await refresh() // Refresh to update summary
+  const handleCheckInSave = async (checkInData) => {
+    try {
+      // Use the smart save method (upserts automatically)
+      await wellnessService.saveCheckIn(user.id, checkInData)
+      
+      setShowCheckInModal(false)
+      setExistingCheckIn(null)
+      
+      // Show success message
+      alert('✅ Check-in saved successfully!')
+    } catch (error) {
+      console.error('Error saving check-in:', error)
+      alert('Failed to save check-in. Please try again.')
     }
   }
 
   // Handle meal save
-  const handleMealSave = async (entryData) => {
-    const { error } = await addEntry('meal', entryData)
-    if (!error) {
-      await refresh() // Refresh to update summary
+  const handleMealSave = async (mealData) => {
+    try {
+      await wellnessService.createMealLog(user.id, mealData)
+      setShowMealModal(false)
+      alert('✅ Meal logged successfully!')
+    } catch (error) {
+      console.error('Error saving meal:', error)
+      alert('Failed to save meal. Please try again.')
     }
   }
+
+  // Handle symptom save
+  const handleSymptomSave = async (symptomData) => {
+    try {
+      await wellnessService.createSymptomLog(user.id, symptomData)
+      setShowSymptomModal(false)
+      alert('✅ Symptom logged successfully!')
+    } catch (error) {
+      console.error('Error saving symptom:', error)
+      alert('Failed to save symptom. Please try again.')
+    }
+  }
+
+  // Legacy code removed - using wellness service now
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -91,10 +143,88 @@ export const Today = () => {
   const encouragement = encouragements[dayOfYear % encouragements.length]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <AppHeader />
-      
-      <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
+    <>
+    <div className="min-h-screen p-4 md:p-8 pb-24 md:pb-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* Header with Logo and Controls */}
+        <div className="flex items-center justify-between mb-6">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <img 
+              src="/logo.png" 
+              alt="Temple Keepers" 
+              className="w-10 h-10 md:w-12 md:h-12 object-contain"
+            />
+            <span className="font-display text-xl md:text-2xl font-bold gradient-text hidden sm:inline">
+              Temple Keepers
+            </span>
+          </div>
+
+          {/* Navigation & Controls */}
+          <div className="flex items-center gap-2">
+            {/* Quick Links - Desktop */}
+            <button
+              onClick={() => navigate('/wellness')}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Heart className="w-4 h-4" />
+              <span>Wellness</span>
+            </button>
+            
+            <button
+              onClick={() => navigate('/programs')}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Programs</span>
+            </button>
+            
+            <button
+              onClick={() => navigate('/recipes')}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <ChefHat className="w-4 h-4" />
+              <span>Recipes</span>
+            </button>
+            
+            <button
+              onClick={() => navigate('/profile')}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <User className="w-4 h-4" />
+              <span>Profile</span>
+            </button>
+            
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="btn-secondary flex items-center gap-2 text-sm"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? (
+                <>
+                  <Sun className="w-4 h-4" />
+                  <span className="hidden sm:inline">Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Dark</span>
+                </>
+              )}
+            </button>
+            
+            {/* Sign Out */}
+            <button
+              onClick={handleSignOut}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
+        </div>
 
         {/* Block 1: Welcome Card */}
         <div className="welcome-card animate-fade-in">
@@ -159,9 +289,9 @@ export const Today = () => {
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
             One Small Step
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button 
-              onClick={() => setShowCheckInModal(true)}
+              onClick={openCheckInModal}
               className="btn-primary flex items-center justify-center gap-2"
             >
               <Heart className="w-5 h-5" />
@@ -173,6 +303,13 @@ export const Today = () => {
             >
               <UtensilsCrossed className="w-5 h-5" />
               <span>Log a Meal</span>
+            </button>
+            <button 
+              onClick={() => setShowSymptomModal(true)}
+              className="btn-secondary flex items-center justify-center gap-2"
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span>Log Symptom</span>
             </button>
           </div>
         </div>
@@ -198,31 +335,43 @@ export const Today = () => {
             <div className="space-y-4">
               {/* Check-ins */}
               {summary.checkInCount > 0 && (
-                <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                <button
+                  onClick={() => navigate('/wellness')}
+                  className="flex items-center gap-3 text-gray-700 dark:text-gray-300 hover:text-temple-purple dark:hover:text-temple-gold transition-colors w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
                   <Heart className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
                   <span>
                     Checked in {summary.checkInCount} {summary.checkInCount === 1 ? 'time' : 'times'} today
                   </span>
-                </div>
+                  <ArrowRight className="w-4 h-4 ml-auto" />
+                </button>
               )}
 
               {/* Meals */}
               {summary.mealCount > 0 && (
                 <div>
-                  <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300 mb-2">
+                  <button
+                    onClick={() => navigate('/wellness')}
+                    className="flex items-center gap-3 text-gray-700 dark:text-gray-300 hover:text-temple-purple dark:hover:text-temple-gold transition-colors w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 mb-2"
+                  >
                     <UtensilsCrossed className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
                     <span className="font-medium">
                       Meals logged: {summary.mealCount}
                     </span>
-                  </div>
+                    <ArrowRight className="w-4 h-4 ml-auto" />
+                  </button>
                   <div className="ml-8 space-y-1">
                     {summary.meals.map((meal, idx) => (
-                      <div key={idx} className="text-sm text-gray-600 dark:text-gray-400">
+                      <button
+                        key={idx}
+                        onClick={() => navigate('/wellness')}
+                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-temple-purple dark:hover:text-temple-gold transition-colors block w-full text-left p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+                      >
                         <span className="font-medium text-temple-purple dark:text-temple-gold">
                           {meal.type}:
                         </span>{' '}
                         {meal.description}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -344,20 +493,45 @@ export const Today = () => {
           </div>
         )}
 
+        {/* Live Session Card (for fasting programs) */}
+        {fastingEnrollment && nextSession && (
+          <div className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            <LiveSessionCard session={nextSession} cohort={cohort} />
+          </div>
+        )}
+
       </div>
 
       {/* Modals */}
-      <CheckInModal 
-        isOpen={showCheckInModal}
-        onClose={() => setShowCheckInModal(false)}
-        onSave={handleCheckInSave}
-      />
+      {showCheckInModal && (
+        <CheckInForm
+          existingCheckIn={existingCheckIn}
+          onClose={() => {
+            setShowCheckInModal(false)
+            setExistingCheckIn(null)
+          }}
+          onSave={handleCheckInSave}
+        />
+      )}
       
-      <MealLogModal 
-        isOpen={showMealModal}
-        onClose={() => setShowMealModal(false)}
-        onSave={handleMealSave}
-      />
+      
+      {showMealModal && (
+        <MealLogForm
+          onClose={() => setShowMealModal(false)}
+          onSave={handleMealSave}
+        />
+      )}
+      
+      {showSymptomModal && (
+        <SymptomLogForm
+          onClose={() => setShowSymptomModal(false)}
+          onSave={handleSymptomSave}
+        />
+      )}
     </div>
+
+    {/* Mobile Bottom Navigation */}
+    <BottomNav />
+    </>
   )
 }

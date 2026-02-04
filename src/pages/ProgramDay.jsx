@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { useEnrollment } from '../hooks/useEnrollment'
+import { FastingTracker } from '../features/fasting/components/FastingTracker'
 import { ArrowLeft, ArrowRight, Check, BookOpen } from 'lucide-react'
 
 export const ProgramDay = () => {
   const { slug, dayNumber } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const {
     getEnrollment,
     markDayComplete,
@@ -361,6 +364,18 @@ export const ProgramDay = () => {
               </p>
             )}
           </div>
+        )}
+
+        {/* Section 5.5: Fasting Tracker (for fasting programs) */}
+        {enrollment?.cohort_id && enrollment?.fasting_type && user && (
+          <FastingTracker
+            userId={user.id}
+            enrollmentId={enrollment.id}
+            fastingType={enrollment.fasting_type}
+            fastingWindow={enrollment.fasting_window}
+            date={new Date().toISOString().split('T')[0]}
+            onSave={() => {}}
+          />
         )}
 
         {/* Section 6: Reflection */}

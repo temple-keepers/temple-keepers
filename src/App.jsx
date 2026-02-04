@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AdminProvider } from './contexts/AdminContext'
+import { Toaster } from 'react-hot-toast'
 import { LoadingSpinner } from './components/LoadingSpinner'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
@@ -12,7 +13,7 @@ import { Programs } from './pages/Programs'
 import { ProgramDetail } from './pages/ProgramDetail'
 import { ProgramDay } from './pages/ProgramDay'
 import { Recipes } from './pages/Recipes'
-import { Wellness } from './pages/Wellness'
+import { Wellness as WellnessHub } from './pages/WellnessHub'
 import { RecipeDetail } from './pages/RecipeDetail'
 import { RecipeGenerator } from './pages/RecipeGenerator'
 import { Roadmap } from './pages/Roadmap'
@@ -28,6 +29,7 @@ import { DayEditor } from './pages/admin/DayEditor'
 import { AdminRecipes } from './pages/admin/Recipes'
 import { AdminThemes } from './pages/admin/Themes'
 import { AdminUsers } from './pages/admin/Users'
+import { AdminEnrollments } from './pages/admin/Enrollments'
 import { AdminSettings } from './pages/admin/Settings'
 
 // Protected Route wrapper
@@ -129,7 +131,7 @@ function AppRoutes() {
       
       <Route path="/wellness" element={
         <ProtectedRoute>
-          <Wellness />
+          <WellnessHub />
         </ProtectedRoute>
       } />
       
@@ -191,6 +193,7 @@ function AppRoutes() {
         <Route path="recipes" element={<AdminRecipes />} />
         <Route path="themes" element={<AdminThemes />} />
         <Route path="users" element={<AdminUsers />} />
+        <Route path="enrollments" element={<AdminEnrollments />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
       
@@ -206,6 +209,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <AdminProvider>
+            <Toaster position="top-center" />
             <AppRoutes />
           </AdminProvider>
         </AuthProvider>

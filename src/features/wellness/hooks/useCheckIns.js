@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { wellnessService } from '../services/wellnessService';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 /**
  * Custom hook for managing wellness check-ins
@@ -13,16 +13,22 @@ export const useCheckIns = (options = {}) => {
 
   // Fetch check-ins
   const fetchCheckIns = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
       setError(null);
+      console.log('Fetching check-ins with options:', options);
       const data = await wellnessService.getCheckIns(user.id, options);
-      setCheckIns(data);
+      console.log('Check-ins fetched:', data?.length || 0, 'records');
+      setCheckIns(data || []);
     } catch (err) {
       console.error('Error fetching check-ins:', err);
       setError(err.message);
+      setCheckIns([]);
     } finally {
       setLoading(false);
     }
@@ -30,8 +36,15 @@ export const useCheckIns = (options = {}) => {
 
   // Fetch on mount and when options change
   useEffect(() => {
+    console.log('⚡ useCheckIns useEffect triggered!', {
+      userId: user?.id,
+      options,
+      startDate: options?.startDate,
+      endDate: options?.endDate,
+      limit: options?.limit
+    });
     fetchCheckIns();
-  }, [user, JSON.stringify(options)]);
+  }, [user?.id, options?.startDate, options?.endDate, options?.limit]);
 
   // Get check-in for a specific date
   const getCheckInByDate = async (date) => {

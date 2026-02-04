@@ -26,6 +26,7 @@ export const AdminLayout = () => {
   const menuItems = [
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/programs', label: 'Programs', icon: BookOpen },
+    { path: '/admin/enrollments', label: 'Enrollments', icon: Calendar },
     { path: '/admin/recipes', label: 'Recipes', icon: UtensilsCrossed },
     { path: '/admin/themes', label: 'Weekly Themes', icon: Calendar },
     { path: '/admin/users', label: 'Users', icon: Users },

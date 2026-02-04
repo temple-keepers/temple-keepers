@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { wellnessService } from '../services/wellnessService';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../contexts/AuthContext';
 
 /**
  * Custom hook for managing symptom logs
@@ -13,16 +13,20 @@ export const useSymptoms = (options = {}) => {
 
   // Fetch symptom logs
   const fetchSymptoms = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
       setError(null);
       const data = await wellnessService.getSymptomLogs(user.id, options);
-      setSymptoms(data);
+      setSymptoms(data || []);
     } catch (err) {
       console.error('Error fetching symptom logs:', err);
       setError(err.message);
+      setSymptoms([]);
     } finally {
       setLoading(false);
     }
@@ -31,7 +35,7 @@ export const useSymptoms = (options = {}) => {
   // Fetch on mount and when options change
   useEffect(() => {
     fetchSymptoms();
-  }, [user, JSON.stringify(options)]);
+  }, [user?.id, options?.startDate, options?.endDate, options?.limit]);
 
   // Create a new symptom log
   const createSymptom = async (symptomData) => {
