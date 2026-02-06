@@ -23,6 +23,8 @@ import { RecipeGenerator } from './pages/RecipeGenerator'
 import { MealPlans } from './pages/MealPlans'
 import { MealPlanBuilder } from './pages/MealPlanBuilder'
 import { ShoppingList } from './pages/ShoppingList'
+import { Pods } from './pages/Pods'
+import { PodDetail } from './pages/PodDetail'
 import { Roadmap } from './pages/Roadmap'
 import { AboutDenise } from './pages/AboutDenise'
 import { Privacy } from './pages/Privacy'
@@ -221,6 +223,19 @@ function AppRoutes() {
       <Route path="/shopping-list/:planId" element={
         <ProtectedRoute>
           <ShoppingList />
+        </ProtectedRoute>
+      } />
+      
+      {/* Community Pod routes */}
+      <Route path="/pods" element={
+        <ProtectedRoute>
+          <Pods />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/pods/:id" element={
+        <ProtectedRoute>
+          <PodDetail />
         </ProtectedRoute>
       } />
       

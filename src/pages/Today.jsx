@@ -6,7 +6,7 @@ import { useEnrollment } from '../hooks/useEnrollment'
 import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
 import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
-import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList } from 'lucide-react'
+import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export const Today = () => {
@@ -124,6 +124,14 @@ export const Today = () => {
             >
               <ClipboardList className="w-4 h-4" />
               <span>Meal Plans</span>
+            </button>
+
+            <button
+              onClick={() => navigate('/pods')}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              <span>Community</span>
             </button>
 
             <button

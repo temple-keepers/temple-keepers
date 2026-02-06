@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, Calendar, UtensilsCrossed, Heart, User } from 'lucide-react'
+import { Home, Calendar, UtensilsCrossed, Users, User } from 'lucide-react'
 
 export const BottomNav = () => {
   const navigate = useNavigate()
@@ -30,7 +30,7 @@ export const BottomNav = () => {
     { path: '/today', icon: Home, label: 'Today' },
     { path: '/programs', icon: Calendar, label: 'Programs' },
     { path: '/recipes', icon: UtensilsCrossed, label: 'Recipes' },
-    { path: '/wellness', icon: Heart, label: 'Wellness' },
+    { path: '/pods', icon: Users, label: 'Community' },
     { path: '/profile', icon: User, label: 'Profile' }
   ]
 
