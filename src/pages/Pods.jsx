@@ -73,6 +73,7 @@ export const Pods = () => {
   const discoverPods = allPods.filter(p => !myPodIds.has(p.id))
 
   const getMemberCount = (pod) => {
+    if (pod.member_count !== undefined) return pod.member_count
     if (pod.pod_members?.[0]?.count !== undefined) return pod.pod_members[0].count
     if (Array.isArray(pod.pod_members)) return pod.pod_members.length
     return 0

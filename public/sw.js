@@ -31,34 +31,36 @@ self.addEventListener('activate', (event) => {
 
 // Fetch — network first, fallback to cache (SPA-friendly)
 self.addEventListener('fetch', (event) => {
-  const { request } = event
+const { request } = event
 
-  // Skip non-GET and Supabase API requests
-  if (request.method !== 'GET') return
-  if (request.url.includes('supabase.co')) return
-  if (request.url.includes('googleapis.com')) return
+// Skip non-GET, non-http(s), and API requests
+if (request.method !== 'GET') return
+if (!request.url.startsWith('http')) return
+if (request.url.includes('supabase.co')) return
+if (request.url.includes('googleapis.com')) return
   if (request.url.includes('gstatic.com')) return
+if (request.url.includes('chrome-extension://')) return
 
-  // For navigation requests (HTML pages), return cached index for SPA routing
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .catch(() => caches.match('/'))
-    )
+// For navigation requests (HTML pages), return cached index for SPA routing
+if (request.mode === 'navigate') {
+event.respondWith(
+  fetch(request)
+    .catch(() => caches.match('/'))
+  )
     return
-  }
+}
 
-  // For assets — network first, cache fallback
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Cache successful responses
-        if (response.ok) {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-        }
-        return response
-      })
+// For assets — network first, cache fallback
+event.respondWith(
+fetch(request)
+.then((response) => {
+// Cache successful responses (only cache same-origin)
+if (response.ok && request.url.startsWith(self.location.origin)) {
+  const clone = response.clone()
+  caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
+  }
+  return response
+    })
       .catch(() => caches.match(request))
   )
 })

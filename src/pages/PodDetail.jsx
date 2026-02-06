@@ -298,7 +298,7 @@ export const PodDetail = () => {
                 ) : (
                   posts.map(post => {
                     const isOwn = post.user_id === user.id
-                    const authorName = post.is_anonymous ? 'Anonymous' : (post.profiles?.first_name || 'Member')
+                    const authorName = post.is_anonymous ? 'Anonymous' : (post.profile?.first_name || post.profiles?.first_name || 'Member')
                     const prayingCount = post.prayer_reactions?.filter(r => r.reaction_type === 'praying').length || 0
                     const amenCount = post.prayer_reactions?.filter(r => r.reaction_type === 'amen').length || 0
                     const myPraying = post.prayer_reactions?.some(r => r.user_id === user.id && r.reaction_type === 'praying')
@@ -402,7 +402,7 @@ export const PodDetail = () => {
                               <div key={reply.id} className="text-sm">
                                 <div className="flex items-center gap-2 mb-1">
                                   <span className="font-semibold text-gray-900 dark:text-white">
-                                    {reply.is_anonymous ? 'Anonymous' : (reply.profiles?.first_name || 'Member')}
+                                    {reply.is_anonymous ? 'Anonymous' : (reply.profile?.first_name || reply.profiles?.first_name || 'Member')}
                                   </span>
                                   <span className="text-xs text-gray-500 dark:text-gray-400">
                                     {new Date(reply.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -484,11 +484,11 @@ export const PodDetail = () => {
                   <div key={member.id} className="glass-card p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-temple-purple/20 dark:bg-temple-gold/20 flex items-center justify-center font-bold text-temple-purple dark:text-temple-gold">
-                        {member.profiles?.first_name?.[0]?.toUpperCase() || '?'}
+                        {(member.profile?.first_name || member.profiles?.first_name)?.[0]?.toUpperCase() || '?'}
                       </div>
                       <div>
                         <span className="font-medium text-gray-900 dark:text-white">
-                          {member.profiles?.first_name || 'Member'}
+                          {member.profile?.first_name || member.profiles?.first_name || 'Member'}
                         </span>
                         {member.role === 'leader' && (
                           <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-temple-gold/20 text-temple-gold font-medium">

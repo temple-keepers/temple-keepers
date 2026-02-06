@@ -2,16 +2,24 @@ import { supabase } from '../../../lib/supabase'
 
 export const podService = {
 
-  // ─── PODS (CRUD) ───────────────────────────────────────
+  // ─── PODS ──────────────────────────────────────────────
 
   async getPods() {
     const { data, error } = await supabase
       .from('pods')
-      .select(`
-        *,
-        pod_members(count)
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
+
+    if (data) {
+      // Get member counts
+      for (const pod of data) {
+        const { count } = await supabase
+          .from('pod_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('pod_id', pod.id)
+        pod.member_count = count || 0
+      }
+    }
 
     return { data, error }
   },
@@ -19,36 +27,70 @@ export const podService = {
   async getMyPods(userId) {
     const { data: memberships, error } = await supabase
       .from('pod_members')
-      .select(`
-        pod_id,
-        role,
-        pods (
-          *,
-          pod_members(count)
-        )
-      `)
+      .select('pod_id, role')
       .eq('user_id', userId)
 
-    return {
-      data: memberships?.map(m => ({ ...m.pods, myRole: m.role })) || [],
-      error
+    if (error || !memberships?.length) return { data: [], error }
+
+    const podIds = memberships.map(m => m.pod_id)
+    const { data: pods } = await supabase
+      .from('pods')
+      .select('*')
+      .in('id', podIds)
+      .order('created_at', { ascending: false })
+
+    // Merge role and member counts
+    const roleMap = {}
+    for (const m of memberships) roleMap[m.pod_id] = m.role
+
+    if (pods) {
+      for (const pod of pods) {
+        pod.myRole = roleMap[pod.id]
+        const { count } = await supabase
+          .from('pod_members')
+          .select('*', { count: 'exact', head: true })
+          .eq('pod_id', pod.id)
+        pod.member_count = count || 0
+      }
     }
+
+    return { data: pods || [], error: null }
   },
 
   async getPod(podId) {
-    const { data, error } = await supabase
+    const { data: pod, error } = await supabase
       .from('pods')
-      .select(`
-        *,
-        pod_members(
-          id, user_id, role, joined_at,
-          profiles(first_name, avatar_url)
-        )
-      `)
+      .select('*')
       .eq('id', podId)
       .single()
 
-    return { data, error }
+    if (error || !pod) return { data: null, error }
+
+    // Get members with profile info
+    const { data: members } = await supabase
+      .from('pod_members')
+      .select('id, user_id, role, joined_at')
+      .eq('pod_id', podId)
+      .order('joined_at')
+
+    // Get profile info for members
+    if (members?.length) {
+      const userIds = members.map(m => m.user_id)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, avatar_url')
+        .in('id', userIds)
+
+      const profileMap = {}
+      for (const p of (profiles || [])) profileMap[p.id] = p
+
+      for (const m of members) {
+        m.profile = profileMap[m.user_id] || { first_name: 'Member' }
+      }
+    }
+
+    pod.pod_members = members || []
+    return { data: pod, error: null }
   },
 
   async createPod(userId, { name, description, isPrivate, maxMembers }) {
@@ -67,26 +109,11 @@ export const podService = {
     if (podError) return { error: podError }
 
     // Auto-join creator as leader
-    const { error: joinError } = await supabase
+    await supabase
       .from('pod_members')
-      .insert({
-        pod_id: pod.id,
-        user_id: userId,
-        role: 'leader',
-      })
+      .insert({ pod_id: pod.id, user_id: userId, role: 'leader' })
 
-    return { data: pod, error: joinError }
-  },
-
-  async updatePod(podId, updates) {
-    const { data, error } = await supabase
-      .from('pods')
-      .update(updates)
-      .eq('id', podId)
-      .select()
-      .single()
-
-    return { data, error }
+    return { data: pod, error: null }
   },
 
   async deletePod(podId) {
@@ -105,7 +132,6 @@ export const podService = {
       .insert({ pod_id: podId, user_id: userId, role: 'member' })
       .select()
       .single()
-
     return { data, error }
   },
 
@@ -115,7 +141,6 @@ export const podService = {
       .delete()
       .eq('pod_id', podId)
       .eq('user_id', userId)
-
     return { error }
   },
 
@@ -126,54 +151,80 @@ export const podService = {
       .eq('pod_id', podId)
       .eq('user_id', userId)
       .maybeSingle()
-
     return { isMember: !!data, role: data?.role }
   },
 
-  // ─── POSTS & DISCUSSION ───────────────────────────────
+  // ─── POSTS ─────────────────────────────────────────────
 
   async getPosts(podId, postType = null) {
     let query = supabase
       .from('pod_posts')
-      .select(`
-        *,
-        profiles(first_name, avatar_url),
-        prayer_reactions(id, user_id, reaction_type)
-      `)
+      .select('*')
       .eq('pod_id', podId)
       .is('parent_id', null)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
 
-    if (postType) {
-      query = query.eq('post_type', postType)
+    if (postType) query = query.eq('post_type', postType)
+
+    const { data: posts, error } = await query
+    if (error || !posts?.length) return { data: posts || [], error }
+
+    // Get author profiles
+    const userIds = [...new Set(posts.map(p => p.user_id))]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, first_name, avatar_url')
+      .in('id', userIds)
+    const profileMap = {}
+    for (const p of (profiles || [])) profileMap[p.id] = p
+
+    // Get replies
+    const postIds = posts.map(p => p.id)
+    const { data: replies } = await supabase
+      .from('pod_posts')
+      .select('*')
+      .in('parent_id', postIds)
+      .order('created_at', { ascending: true })
+
+    // Get reply author profiles
+    const replyUserIds = [...new Set((replies || []).map(r => r.user_id))]
+    const newUserIds = replyUserIds.filter(id => !profileMap[id])
+    if (newUserIds.length) {
+      const { data: replyProfiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, avatar_url')
+        .in('id', newUserIds)
+      for (const p of (replyProfiles || [])) profileMap[p.id] = p
     }
 
-    const { data, error } = await query
+    // Get prayer reactions
+    const { data: reactions } = await supabase
+      .from('prayer_reactions')
+      .select('id, post_id, user_id, reaction_type')
+      .in('post_id', postIds)
 
-    if (data) {
-      // Fetch replies separately to avoid ambiguous self-join
-      const postIds = data.map(p => p.id)
-      if (postIds.length > 0) {
-        const { data: replies } = await supabase
-          .from('pod_posts')
-          .select('*, profiles(first_name, avatar_url)')
-          .in('parent_id', postIds)
-          .order('created_at', { ascending: true })
-
-        // Attach replies to parent posts
-        const repliesByParent = {}
-        for (const r of (replies || [])) {
-          if (!repliesByParent[r.parent_id]) repliesByParent[r.parent_id] = []
-          repliesByParent[r.parent_id].push(r)
-        }
-        for (const post of data) {
-          post.replies = repliesByParent[post.id] || []
-        }
-      }
+    // Assemble
+    const repliesByParent = {}
+    for (const r of (replies || [])) {
+      r.profile = profileMap[r.user_id] || { first_name: 'Member' }
+      if (!repliesByParent[r.parent_id]) repliesByParent[r.parent_id] = []
+      repliesByParent[r.parent_id].push(r)
     }
 
-    return { data, error }
+    const reactionsByPost = {}
+    for (const r of (reactions || [])) {
+      if (!reactionsByPost[r.post_id]) reactionsByPost[r.post_id] = []
+      reactionsByPost[r.post_id].push(r)
+    }
+
+    for (const post of posts) {
+      post.profile = profileMap[post.user_id] || { first_name: 'Member' }
+      post.replies = repliesByParent[post.id] || []
+      post.prayer_reactions = reactionsByPost[post.id] || []
+    }
+
+    return { data: posts, error: null }
   },
 
   async createPost(podId, userId, { content, postType, isAnonymous }) {
@@ -186,9 +237,8 @@ export const podService = {
         post_type: postType || 'discussion',
         is_anonymous: isAnonymous || false,
       })
-      .select('*, profiles(first_name, avatar_url)')
+      .select()
       .single()
-
     return { data, error }
   },
 
@@ -202,23 +252,13 @@ export const podService = {
         content,
         post_type: 'discussion',
       })
-      .select('*, profiles(first_name, avatar_url)')
+      .select()
       .single()
-
     return { data, error }
   },
 
   async deletePost(postId) {
     const { error } = await supabase.from('pod_posts').delete().eq('id', postId)
-    return { error }
-  },
-
-  async togglePin(postId, isPinned) {
-    const { error } = await supabase
-      .from('pod_posts')
-      .update({ is_pinned: !isPinned })
-      .eq('id', postId)
-
     return { error }
   },
 
@@ -230,7 +270,6 @@ export const podService = {
       .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
       .select()
       .single()
-
     return { data, error }
   },
 
@@ -241,7 +280,6 @@ export const podService = {
       .eq('post_id', postId)
       .eq('user_id', userId)
       .eq('reaction_type', reactionType)
-
     return { error }
   },
 
@@ -250,28 +288,20 @@ export const podService = {
   async getChallenges(podId) {
     const { data, error } = await supabase
       .from('pod_challenges')
-      .select(`
-        *,
-        programs(id, title, slug, duration_days, program_type)
-      `)
+      .select('*, programs(id, title, slug, duration_days)')
       .eq('pod_id', podId)
       .order('created_at', { ascending: false })
 
-    // Fetch assigned_by profile names separately
     if (data) {
       const userIds = [...new Set(data.map(c => c.assigned_by))]
-      if (userIds.length > 0) {
+      if (userIds.length) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, first_name')
           .in('id', userIds)
-
-        const profileMap = {}
-        for (const p of (profiles || [])) profileMap[p.id] = p
-
-        for (const c of data) {
-          c.assigned_by_profile = profileMap[c.assigned_by] || null
-        }
+        const map = {}
+        for (const p of (profiles || [])) map[p.id] = p
+        for (const c of data) c.assigned_by_profile = map[c.assigned_by] || null
       }
     }
 
@@ -298,18 +328,13 @@ export const podService = {
         assigned_by: userId,
         status: new Date(startDate) > new Date() ? 'upcoming' : 'active',
       })
-      .select('*, programs(id, title, slug, duration_days)')
+      .select()
       .single()
-
     return { data, error }
   },
 
   async deleteChallenge(challengeId) {
-    const { error } = await supabase
-      .from('pod_challenges')
-      .delete()
-      .eq('id', challengeId)
-
+    const { error } = await supabase.from('pod_challenges').delete().eq('id', challengeId)
     return { error }
   },
 }
