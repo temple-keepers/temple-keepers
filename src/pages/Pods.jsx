@@ -185,7 +185,7 @@ export const Pods = () => {
                         {memberCount}/{pod.max_members} members
                       </span>
                       <span>
-                        Created by {pod.created_by_profile?.first_name || 'Unknown'}
+                        {pod.is_private ? 'Private' : 'Public'} pod
                       </span>
                     </div>
                   </div>

@@ -9,8 +9,7 @@ export const podService = {
       .from('pods')
       .select(`
         *,
-        pod_members(count),
-        created_by_profile:profiles!pods_created_by_fkey(first_name, avatar_url)
+        pod_members(count)
       `)
       .order('created_at', { ascending: false })
 
@@ -25,8 +24,7 @@ export const podService = {
         role,
         pods (
           *,
-          pod_members(count),
-          created_by_profile:profiles!pods_created_by_fkey(first_name, avatar_url)
+          pod_members(count)
         )
       `)
       .eq('user_id', userId)
@@ -42,7 +40,6 @@ export const podService = {
       .from('pods')
       .select(`
         *,
-        created_by_profile:profiles!pods_created_by_fkey(first_name, avatar_url),
         pod_members(
           id, user_id, role, joined_at,
           profiles(first_name, avatar_url)
@@ -93,7 +90,6 @@ export const podService = {
   },
 
   async deletePod(podId) {
-    // Delete dependents first
     await supabase.from('pod_posts').delete().eq('pod_id', podId)
     await supabase.from('pod_challenges').delete().eq('pod_id', podId)
     await supabase.from('pod_members').delete().eq('pod_id', podId)
@@ -141,15 +137,11 @@ export const podService = {
       .from('pod_posts')
       .select(`
         *,
-        profiles:profiles!pod_posts_user_id_fkey(first_name, avatar_url),
-        replies:pod_posts(
-          id, content, user_id, created_at, is_anonymous,
-          profiles:profiles!pod_posts_user_id_fkey(first_name, avatar_url)
-        ),
+        profiles(first_name, avatar_url),
         prayer_reactions(id, user_id, reaction_type)
       `)
       .eq('pod_id', podId)
-      .is('parent_id', null) // top-level posts only
+      .is('parent_id', null)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
 
@@ -158,6 +150,29 @@ export const podService = {
     }
 
     const { data, error } = await query
+
+    if (data) {
+      // Fetch replies separately to avoid ambiguous self-join
+      const postIds = data.map(p => p.id)
+      if (postIds.length > 0) {
+        const { data: replies } = await supabase
+          .from('pod_posts')
+          .select('*, profiles(first_name, avatar_url)')
+          .in('parent_id', postIds)
+          .order('created_at', { ascending: true })
+
+        // Attach replies to parent posts
+        const repliesByParent = {}
+        for (const r of (replies || [])) {
+          if (!repliesByParent[r.parent_id]) repliesByParent[r.parent_id] = []
+          repliesByParent[r.parent_id].push(r)
+        }
+        for (const post of data) {
+          post.replies = repliesByParent[post.id] || []
+        }
+      }
+    }
+
     return { data, error }
   },
 
@@ -171,10 +186,7 @@ export const podService = {
         post_type: postType || 'discussion',
         is_anonymous: isAnonymous || false,
       })
-      .select(`
-        *,
-        profiles:profiles!pod_posts_user_id_fkey(first_name, avatar_url)
-      `)
+      .select('*, profiles(first_name, avatar_url)')
       .single()
 
     return { data, error }
@@ -190,10 +202,7 @@ export const podService = {
         content,
         post_type: 'discussion',
       })
-      .select(`
-        *,
-        profiles:profiles!pod_posts_user_id_fkey(first_name, avatar_url)
-      `)
+      .select('*, profiles(first_name, avatar_url)')
       .single()
 
     return { data, error }
@@ -243,11 +252,28 @@ export const podService = {
       .from('pod_challenges')
       .select(`
         *,
-        programs(id, title, slug, duration_days, program_type),
-        assigned_by_profile:profiles!pod_challenges_assigned_by_fkey(first_name)
+        programs(id, title, slug, duration_days, program_type)
       `)
       .eq('pod_id', podId)
       .order('created_at', { ascending: false })
+
+    // Fetch assigned_by profile names separately
+    if (data) {
+      const userIds = [...new Set(data.map(c => c.assigned_by))]
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name')
+          .in('id', userIds)
+
+        const profileMap = {}
+        for (const p of (profiles || [])) profileMap[p.id] = p
+
+        for (const c of data) {
+          c.assigned_by_profile = profileMap[c.assigned_by] || null
+        }
+      }
+    }
 
     return { data, error }
   },
@@ -272,10 +298,7 @@ export const podService = {
         assigned_by: userId,
         status: new Date(startDate) > new Date() ? 'upcoming' : 'active',
       })
-      .select(`
-        *,
-        programs(id, title, slug, duration_days)
-      `)
+      .select('*, programs(id, title, slug, duration_days)')
       .single()
 
     return { data, error }
