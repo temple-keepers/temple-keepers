@@ -162,7 +162,7 @@ export const RecipeGenerator = () => {
               {/* Time & Servings */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     Max Time (min)
                   </label>
@@ -177,7 +177,7 @@ export const RecipeGenerator = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
                     <Users className="w-4 h-4" />
                     Servings
                   </label>

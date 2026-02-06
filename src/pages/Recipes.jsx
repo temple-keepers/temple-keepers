@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
-import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice } from 'lucide-react'
+import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice, Book } from 'lucide-react'
 
 export const Recipes = () => {
   const navigate = useNavigate()

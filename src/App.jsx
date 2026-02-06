@@ -20,6 +20,9 @@ import { WellnessMealLog } from './pages/WellnessMealLog'
 import { WellnessSymptomLog } from './pages/WellnessSymptomLog'
 import { RecipeDetail } from './pages/RecipeDetail'
 import { RecipeGenerator } from './pages/RecipeGenerator'
+import { MealPlans } from './pages/MealPlans'
+import { MealPlanBuilder } from './pages/MealPlanBuilder'
+import { ShoppingList } from './pages/ShoppingList'
 import { Roadmap } from './pages/Roadmap'
 import { AboutDenise } from './pages/AboutDenise'
 import { Privacy } from './pages/Privacy'
@@ -199,6 +202,25 @@ function AppRoutes() {
       <Route path="/recipes/:id" element={
         <ProtectedRoute>
           <RecipeDetail />
+        </ProtectedRoute>
+      } />
+      
+      {/* Meal Plan routes */}
+      <Route path="/meal-plans" element={
+        <ProtectedRoute>
+          <MealPlans />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/meal-plans/:id" element={
+        <ProtectedRoute>
+          <MealPlanBuilder />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/shopping-list/:planId" element={
+        <ProtectedRoute>
+          <ShoppingList />
         </ProtectedRoute>
       } />
       

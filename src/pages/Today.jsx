@@ -6,7 +6,7 @@ import { useEnrollment } from '../hooks/useEnrollment'
 import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
 import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
-import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle } from 'lucide-react'
+import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export const Today = () => {
@@ -119,6 +119,14 @@ export const Today = () => {
             </button>
 
             <button
+              onClick={() => navigate('/meal-plans')}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>Meal Plans</span>
+            </button>
+
+            <button
               onClick={() => navigate('/profile')}
               className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
@@ -219,7 +227,7 @@ export const Today = () => {
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
             One Small Step
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <button
               onClick={() => navigate('/wellness/check-in')}
               className="btn-primary flex items-center justify-center gap-2"
@@ -233,6 +241,13 @@ export const Today = () => {
             >
               <UtensilsCrossed className="w-5 h-5" />
               <span>Log a Meal</span>
+            </button>
+            <button
+              onClick={() => navigate('/meal-plans')}
+              className="btn-secondary flex items-center justify-center gap-2"
+            >
+              <ClipboardList className="w-5 h-5" />
+              <span>Meal Plans</span>
             </button>
             <button
               onClick={() => navigate('/wellness/symptoms/new')}
