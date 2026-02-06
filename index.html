@@ -2,19 +2,107 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="A daily Christian wellness companion for mind, body, and spirit" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6B21A8" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Temple Keepers" />
+    <meta name="application-name" content="Temple Keepers" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="msapplication-TileColor" content="#6B21A8" />
+    
+    <!-- Favicons & Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     
+    <!-- iOS Splash Screens (most common sizes) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
     <title>Temple Keepers - Daily Wellness Companion</title>
+    
+    <style>
+      /* Splash screen while app loads */
+      #splash-screen {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #6B21A8 0%, #4C1D95 50%, #581C87 100%);
+        z-index: 9999;
+        transition: opacity 0.3s ease-out;
+      }
+      #splash-screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #splash-screen img {
+        width: 80px;
+        height: 80px;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      #splash-screen p {
+        color: rgba(255,255,255,0.9);
+        font-family: 'Playfair Display', serif;
+        font-size: 1.25rem;
+        margin-top: 1rem;
+        letter-spacing: 0.05em;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+      }
+    </style>
   </head>
   <body>
+    <!-- Splash screen shown while JS loads -->
+    <div id="splash-screen">
+      <img src="/logo.png" alt="Temple Keepers" />
+      <p>Temple Keepers</p>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      // Hide splash screen once app renders
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splash = document.getElementById('splash-screen');
+          if (splash) {
+            splash.classList.add('hidden');
+            setTimeout(() => splash.remove(), 300);
+          }
+        }, 500);
+      });
+
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => {
+              console.log('SW registered:', reg.scope);
+            })
+            .catch((err) => {
+              console.log('SW registration failed:', err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

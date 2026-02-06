@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
-import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice, Book } from 'lucide-react'
+import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice, BookOpen } from 'lucide-react'
+import { BottomNav } from '../components/BottomNav'
 
 export const Recipes = () => {
   const navigate = useNavigate()
@@ -62,7 +63,8 @@ export const Recipes = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       {/* Header */}
       <AppHeader title="Recipes" />
 
@@ -167,7 +169,7 @@ export const Recipes = () => {
                     </div>
                     {recipe.scripture && (
                       <div className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/90 flex items-center justify-center">
-                        <Book className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
+                        <BookOpen className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
                       </div>
                     )}
                   </div>
@@ -225,5 +227,7 @@ export const Recipes = () => {
         )}
       </div>
     </div>
+    <BottomNav />
+    </>
   )
 }

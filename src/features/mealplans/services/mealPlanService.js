@@ -161,7 +161,6 @@ export const mealPlanService = {
       filtered = recipes.filter(r =>
         preferences.dietaryTags.some(tag => r.dietary_tags?.includes(tag))
       )
-      // Fallback to all if too few match
       if (filtered.length < 4) filtered = recipes
     }
 
@@ -173,28 +172,67 @@ export const mealPlanService = {
       snack: filtered.filter(r => r.meal_type === 'snack'),
     }
 
-    // Fill in missing types with any recipe
+    // Fill in missing types with all recipes
     for (const type of MEAL_TYPES) {
-      if (byType[type].length === 0) byType[type] = filtered
+      if (byType[type].length === 0) byType[type] = [...filtered]
     }
 
     // Clear existing days for this plan
     await supabase.from('meal_plan_days').delete().eq('meal_plan_id', planId)
 
-    // Generate 7 days
-    const shuffled = (arr) => [...arr].sort(() => Math.random() - 0.5)
+    // Fisher-Yates shuffle for true randomness
+    const shuffle = (arr) => {
+      const a = [...arr]
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]]
+      }
+      return a
+    }
+
     const meals = []
     const mealsToGenerate = preferences.mealsPerDay || ['breakfast', 'lunch', 'dinner']
 
-    for (let day = 0; day < 7; day++) {
-      for (const mealType of mealsToGenerate) {
-        const pool = shuffled(byType[mealType])
-        const recipe = pool[day % pool.length]
+    for (const mealType of mealsToGenerate) {
+      const pool = byType[mealType]
+      // Create a shuffled queue that avoids repeats as much as possible
+      let queue = shuffle(pool)
+      const usedRecently = new Set()
+      const maxRecent = Math.min(Math.floor(pool.length * 0.6), 4)
+
+      for (let day = 0; day < 7; day++) {
+        // If queue is empty, reshuffle
+        if (queue.length === 0) {
+          queue = shuffle(pool)
+        }
+
+        // Try to pick one not used recently
+        let picked = null
+        for (let i = 0; i < queue.length; i++) {
+          if (!usedRecently.has(queue[i].id)) {
+            picked = queue.splice(i, 1)[0]
+            break
+          }
+        }
+
+        // Fallback: just take the first
+        if (!picked) {
+          picked = queue.shift()
+          if (!picked) picked = pool[Math.floor(Math.random() * pool.length)]
+        }
+
+        // Track recently used
+        usedRecently.add(picked.id)
+        if (usedRecently.size > maxRecent) {
+          const first = usedRecently.values().next().value
+          usedRecently.delete(first)
+        }
+
         meals.push({
           meal_plan_id: planId,
           day_of_week: day,
           meal_type: mealType,
-          recipe_id: recipe.id,
+          recipe_id: picked.id,
         })
       }
     }
