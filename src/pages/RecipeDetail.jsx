@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
+import { BottomNav } from '../components/BottomNav'
 import { ArrowLeft, Clock, Users, Heart, BookOpen, ChefHat } from 'lucide-react'
 
 export const RecipeDetail = () => {
@@ -97,7 +98,8 @@ export const RecipeDetail = () => {
   if (!recipe) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       {/* Header */}
       <AppHeader showBackButton={true} backTo="/recipes" />
 
@@ -411,5 +413,7 @@ export const RecipeDetail = () => {
         </div>
       </div>
     </div>
+    <BottomNav />
+    </>
   )
 }

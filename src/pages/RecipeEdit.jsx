@@ -6,14 +6,19 @@ import { useRecipes } from '../hooks/useRecipes'
 import { useAuth } from '../contexts/AuthContext'
 
 const dietaryOptions = [
+  'daniel-fast',
   'vegetarian',
   'vegan',
+  'pescatarian',
   'gluten-free',
   'dairy-free',
   'nut-free',
   'low-carb',
   'keto',
-  'paleo'
+  'paleo',
+  'whole-foods',
+  'mediterranean',
+  'low-sodium'
 ]
 
 export const RecipeEdit = () => {
@@ -529,8 +534,8 @@ export const RecipeEdit = () => {
                   <option value="breakfast">Breakfast</option>
                   <option value="lunch">Lunch</option>
                   <option value="dinner">Dinner</option>
-                  <option value="snack">Snack</option>
-                  <option value="dessert">Dessert</option>
+                  <option value="snack">Healthy Snack</option>
+                  <option value="dessert">Healthy Dessert</option>
                 </select>
               </div>
 

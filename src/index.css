@@ -321,3 +321,8 @@ html.dark body {
 .animate-slide-out-right {
   animation: slideOutRight 0.3s ease-in;
 }
+
+
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

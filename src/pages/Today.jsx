@@ -1,36 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
-import { useTodayLog } from '../hooks/useTodayLog'
 import { useDevotional } from '../hooks/useDevotional'
 import { useEnrollment } from '../hooks/useEnrollment'
-import { CheckInForm } from '../features/wellness/components/CheckInForm'
-import { MealLogForm } from '../features/wellness/components/MealLogForm'
-import { SymptomLogForm } from '../features/wellness/components/SymptomLogForm'
 import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
 import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
 import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { wellnessService } from '../features/wellness/services/wellnessService'
 
 export const Today = () => {
   const { user, profile, signOut } = useAuth()
   const { isDark, toggleTheme } = useTheme()
-  const { loading: logLoading, getSummary, addEntry, refresh } = useTodayLog()
   const { devotional, loading: devotionalLoading } = useDevotional()
   const { getActiveEnrollments } = useEnrollment()
   const [greeting, setGreeting] = useState('')
   const [timeIcon, setTimeIcon] = useState(Sun)
-  const [showCheckInModal, setShowCheckInModal] = useState(false)
-  const [showMealModal, setShowMealModal] = useState(false)
-  const [showSymptomModal, setShowSymptomModal] = useState(false)
   const [activePrograms, setActivePrograms] = useState([])
-  const [existingCheckIn, setExistingCheckIn] = useState(null)
   const navigate = useNavigate()
-
-  // Get today's summary
-  const summary = getSummary()
 
   // Detect fasting enrollment and get live session
   const fastingEnrollment = activePrograms.find(e => e.cohort_id)
@@ -50,63 +37,6 @@ export const Today = () => {
       setActivePrograms(data)
     }
   }
-
-  // Open check-in modal and load existing data
-  const openCheckInModal = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const existing = await wellnessService.getCheckInByDate(user.id, today)
-      setExistingCheckIn(existing)
-      setShowCheckInModal(true)
-    } catch (error) {
-      console.error('Error loading existing check-in:', error)
-      setExistingCheckIn(null)
-      setShowCheckInModal(true)
-    }
-  }
-
-  // Handle check-in save
-  const handleCheckInSave = async (checkInData) => {
-    try {
-      // Use the smart save method (upserts automatically)
-      await wellnessService.saveCheckIn(user.id, checkInData)
-      
-      setShowCheckInModal(false)
-      setExistingCheckIn(null)
-      
-      // Show success message
-      alert('✅ Check-in saved successfully!')
-    } catch (error) {
-      console.error('Error saving check-in:', error)
-      alert('Failed to save check-in. Please try again.')
-    }
-  }
-
-  // Handle meal save
-  const handleMealSave = async (mealData) => {
-    try {
-      await wellnessService.createMealLog(user.id, mealData)
-      setShowMealModal(false)
-      alert('✅ Meal logged successfully!')
-    } catch (error) {
-      console.error('Error saving meal:', error)
-      alert('Failed to save meal. Please try again.')
-    }
-  }
-
-  // Handle symptom save
-  const handleSymptomSave = async (symptomData) => {
-    try {
-      await wellnessService.createSymptomLog(user.id, symptomData)
-      setShowSymptomModal(false)
-      alert('✅ Symptom logged successfully!')
-    } catch (error) {
-      console.error('Error saving symptom:', error)
-      alert('Failed to save symptom. Please try again.')
-    }
-  }
-
-  // Legacy code removed - using wellness service now
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -132,13 +62,13 @@ export const Today = () => {
 
   // Gentle encouragements (rotate daily)
   const encouragements = [
-    "One faithful step is all you need today.",
-    "Your temple is worth stewarding well.",
-    "Grace meets you right where you are.",
-    "Small returns compound into transformation.",
-    "You're here. That's already beautiful.",
+    'One faithful step is all you need today.',
+    'Your temple is worth stewarding well.',
+    'Grace meets you right where you are.',
+    'Small returns compound into transformation.',
+    "You're here. That's already beautiful."
   ]
-  
+
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
   const encouragement = encouragements[dayOfYear % encouragements.length]
 
@@ -146,14 +76,14 @@ export const Today = () => {
     <>
     <div className="min-h-screen p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         {/* Header with Logo and Controls */}
         <div className="flex items-center justify-between mb-6">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img 
-              src="/logo.png" 
-              alt="Temple Keepers" 
+            <img
+              src="/logo.png"
+              alt="Temple Keepers"
               className="w-10 h-10 md:w-12 md:h-12 object-contain"
             />
             <span className="font-display text-xl md:text-2xl font-bold gradient-text hidden sm:inline">
@@ -161,7 +91,7 @@ export const Today = () => {
             </span>
           </div>
 
-          {/* Navigation & Controls */}
+          {/* Navigation and Controls */}
           <div className="flex items-center gap-2">
             {/* Quick Links - Desktop */}
             <button
@@ -171,7 +101,7 @@ export const Today = () => {
               <Heart className="w-4 h-4" />
               <span>Wellness</span>
             </button>
-            
+
             <button
               onClick={() => navigate('/programs')}
               className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -179,7 +109,7 @@ export const Today = () => {
               <Calendar className="w-4 h-4" />
               <span>Programs</span>
             </button>
-            
+
             <button
               onClick={() => navigate('/recipes')}
               className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -187,7 +117,7 @@ export const Today = () => {
               <ChefHat className="w-4 h-4" />
               <span>Recipes</span>
             </button>
-            
+
             <button
               onClick={() => navigate('/profile')}
               className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -195,7 +125,7 @@ export const Today = () => {
               <User className="w-4 h-4" />
               <span>Profile</span>
             </button>
-            
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -214,7 +144,7 @@ export const Today = () => {
                 </>
               )}
             </button>
-            
+
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
@@ -253,7 +183,7 @@ export const Today = () => {
               </div>
               <h2 className="text-lg font-semibold text-temple-gold">Daily Bread</h2>
             </div>
-            
+
             {devotionalLoading ? (
               <div className="text-center py-8">
                 <div className="spinner mx-auto mb-3"></div>
@@ -267,9 +197,9 @@ export const Today = () => {
                   "{devotional.verse}"
                 </p>
                 <p className="devotional-reference">
-                  — {devotional.reference}
+                  -- {devotional.reference}
                 </p>
-                
+
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
                     {devotional.reflection}
@@ -290,22 +220,22 @@ export const Today = () => {
             One Small Step
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button 
-              onClick={openCheckInModal}
+            <button
+              onClick={() => navigate('/wellness/check-in')}
               className="btn-primary flex items-center justify-center gap-2"
             >
               <Heart className="w-5 h-5" />
               <span>Quick Check-In</span>
             </button>
-            <button 
-              onClick={() => setShowMealModal(true)}
+            <button
+              onClick={() => navigate('/wellness/meals/new')}
               className="btn-gold flex items-center justify-center gap-2"
             >
               <UtensilsCrossed className="w-5 h-5" />
               <span>Log a Meal</span>
             </button>
-            <button 
-              onClick={() => setShowSymptomModal(true)}
+            <button
+              onClick={() => navigate('/wellness/symptoms/new')}
               className="btn-secondary flex items-center justify-center gap-2"
             >
               <AlertCircle className="w-5 h-5" />
@@ -316,68 +246,18 @@ export const Today = () => {
 
         {/* Block 4: Temple Care Today */}
         <div className="summary-card animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
             Temple Care Today
           </h2>
-          
-          {logLoading ? (
-            <div className="text-center py-8">
-              <div className="spinner mx-auto"></div>
-            </div>
-          ) : summary.checkInCount === 0 && summary.mealCount === 0 ? (
-            /* Empty state */
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <p className="text-sm">No check-ins or meals logged yet today.</p>
-              <p className="text-xs mt-2">Start by taking a small step above! ✨</p>
-            </div>
-          ) : (
-            /* Active state with data */
-            <div className="space-y-4">
-              {/* Check-ins */}
-              {summary.checkInCount > 0 && (
-                <button
-                  onClick={() => navigate('/wellness')}
-                  className="flex items-center gap-3 text-gray-700 dark:text-gray-300 hover:text-temple-purple dark:hover:text-temple-gold transition-colors w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <Heart className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
-                  <span>
-                    Checked in {summary.checkInCount} {summary.checkInCount === 1 ? 'time' : 'times'} today
-                  </span>
-                  <ArrowRight className="w-4 h-4 ml-auto" />
-                </button>
-              )}
-
-              {/* Meals */}
-              {summary.mealCount > 0 && (
-                <div>
-                  <button
-                    onClick={() => navigate('/wellness')}
-                    className="flex items-center gap-3 text-gray-700 dark:text-gray-300 hover:text-temple-purple dark:hover:text-temple-gold transition-colors w-full text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 mb-2"
-                  >
-                    <UtensilsCrossed className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
-                    <span className="font-medium">
-                      Meals logged: {summary.mealCount}
-                    </span>
-                    <ArrowRight className="w-4 h-4 ml-auto" />
-                  </button>
-                  <div className="ml-8 space-y-1">
-                    {summary.meals.map((meal, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => navigate('/wellness')}
-                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-temple-purple dark:hover:text-temple-gold transition-colors block w-full text-left p-1 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
-                      >
-                        <span className="font-medium text-temple-purple dark:text-temple-gold">
-                          {meal.type}:
-                        </span>{' '}
-                        {meal.description}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Review your check-ins, meals, and symptoms in one place.
+          </p>
+          <button
+            onClick={() => navigate('/wellness')}
+            className="btn-secondary inline-flex items-center gap-2"
+          >
+            View Wellness History
+          </button>
         </div>
 
         {/* Block 4: Active Programs */}
@@ -407,7 +287,7 @@ export const Today = () => {
                 const today = new Date()
                 const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
                 const maxUnlockedDay = Math.min(daysSinceStart + 1, enrollment.programs.duration_days)
-                
+
                 // Find first uncompleted day within unlocked range
                 let nextDay = 1
                 for (let i = 1; i <= maxUnlockedDay; i++) {
@@ -416,12 +296,12 @@ export const Today = () => {
                     break
                   }
                 }
-                
+
                 // If all unlocked days are complete, show the latest unlocked day
                 if (completedDaysSet.has(nextDay) && nextDay < maxUnlockedDay) {
                   nextDay = maxUnlockedDay
                 }
-                
+
                 return (
                   <div
                     key={enrollment.id}
@@ -443,7 +323,7 @@ export const Today = () => {
                         </div>
                         <ArrowRight className="w-5 h-5 text-temple-purple dark:text-temple-gold flex-shrink-0 group-hover:translate-x-1 transition-transform" />
                       </div>
-                      
+
                       <div className="space-y-2 mb-3">
                         <div className="flex items-center justify-between text-sm">
                           <span className="font-medium text-gray-700 dark:text-gray-300">
@@ -454,13 +334,13 @@ export const Today = () => {
                           </span>
                         </div>
                         <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 transition-all rounded-full"
                             style={{ width: `${((enrollment.completed_days?.length || 0) / enrollment.programs.duration_days) * 100}%` }}
                           />
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/50 dark:bg-gray-800/50 border border-temple-purple/20 dark:border-temple-gold/20">
                         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-temple-purple/20 dark:bg-temple-gold/20 flex items-center justify-center">
                           <span className="text-sm font-bold text-temple-purple dark:text-temple-gold">
@@ -501,33 +381,6 @@ export const Today = () => {
         )}
 
       </div>
-
-      {/* Modals */}
-      {showCheckInModal && (
-        <CheckInForm
-          existingCheckIn={existingCheckIn}
-          onClose={() => {
-            setShowCheckInModal(false)
-            setExistingCheckIn(null)
-          }}
-          onSave={handleCheckInSave}
-        />
-      )}
-      
-      
-      {showMealModal && (
-        <MealLogForm
-          onClose={() => setShowMealModal(false)}
-          onSave={handleMealSave}
-        />
-      )}
-      
-      {showSymptomModal && (
-        <SymptomLogForm
-          onClose={() => setShowSymptomModal(false)}
-          onSave={handleSymptomSave}
-        />
-      )}
     </div>
 
     {/* Mobile Bottom Navigation */}

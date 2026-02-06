@@ -3,31 +3,43 @@ import { useNavigate } from 'react-router-dom'
 import { generateRecipe } from '../lib/recipeAI'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
-import { ArrowLeft, Sparkles, Clock, Users, ChefHat, Book } from 'lucide-react'
+import { BottomNav } from '../components/BottomNav'
+import toast from 'react-hot-toast'
+import { Sparkles, Clock, Users, ChefHat } from 'lucide-react'
 
 export const RecipeGenerator = () => {
   const navigate = useNavigate()
   const { createRecipe } = useRecipes()
-  
+
   const [mealType, setMealType] = useState('dinner')
   const [cuisine, setCuisine] = useState('any')
   const [cookingTime, setCookingTime] = useState(30)
   const [servings, setServings] = useState(4)
   const [dietaryRestrictions, setDietaryRestrictions] = useState([])
-  const [includeScripture, setIncludeScripture] = useState(true)
-  
+  const [includeIngredients, setIncludeIngredients] = useState('')
+  const [excludeIngredients, setExcludeIngredients] = useState('')
+
   const [generating, setGenerating] = useState(false)
   const [generatedRecipe, setGeneratedRecipe] = useState(null)
   const [saving, setSaving] = useState(false)
 
   const dietaryOptions = [
-    'vegetarian', 'vegan', 'gluten-free', 'dairy-free',
-    'nut-free', 'low-carb', 'keto', 'paleo'
+    'daniel-fast',
+    'vegetarian', 'vegan', 'pescatarian', 'gluten-free', 'dairy-free',
+    'nut-free', 'low-carb', 'keto', 'paleo', 'whole-foods', 'mediterranean', 'low-sodium'
   ]
 
   const cuisineOptions = [
     'any', 'american', 'italian', 'mexican', 'asian',
     'mediterranean', 'indian', 'middle-eastern', 'caribbean', 'african'
+  ]
+
+  const mealTypeOptions = [
+    { value: 'breakfast', label: 'Breakfast' },
+    { value: 'lunch', label: 'Lunch' },
+    { value: 'dinner', label: 'Dinner' },
+    { value: 'snack', label: 'Healthy Snack' },
+    { value: 'dessert', label: 'Healthy Dessert' }
   ]
 
   const toggleDietary = (option) => {
@@ -38,23 +50,31 @@ export const RecipeGenerator = () => {
     )
   }
 
+  const parseIngredientList = (value) => value
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+
   const handleGenerate = async () => {
     setGenerating(true)
     setGeneratedRecipe(null)
 
+    const mealTypeLabel = mealTypeOptions.find(option => option.value === mealType)?.label || mealType
+
     const { success, recipe, error } = await generateRecipe({
-      mealType,
+      mealType: mealTypeLabel.toLowerCase(),
       dietaryRestrictions,
       cuisine,
       cookingTime,
       servings,
-      includeScripture
+      includeIngredients: parseIngredientList(includeIngredients),
+      excludeIngredients: parseIngredientList(excludeIngredients)
     })
 
     if (success) {
       setGeneratedRecipe(recipe)
     } else {
-      alert('Failed to generate recipe: ' + error)
+      toast.error('Failed to generate recipe: ' + error)
     }
 
     setGenerating(false)
@@ -88,19 +108,20 @@ export const RecipeGenerator = () => {
 
     if (!error && data) {
       // Show success message
-      alert('Recipe saved successfully!')
+      toast.success('Recipe saved! \uD83D\uDE4F')
       // Redirect to recipes list to see it
       navigate('/recipes')
     } else {
       console.error('Save error:', error)
-      alert(`Failed to save recipe: ${error?.message || 'Unknown error'}. Make sure you've run the database migration in Supabase!`)
+      toast.error(`Failed to save recipe: ${error?.message || 'Unknown error'}`)
     }
 
     setSaving(false)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       {/* Header */}
       <AppHeader title="AI Recipe Generator" showBackButton={true} backTo="/recipes" />
 
@@ -110,7 +131,7 @@ export const RecipeGenerator = () => {
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
+
           {/* Generator Form */}
           <div className="space-y-6">
             <div className="glass-card p-6">
@@ -124,20 +145,20 @@ export const RecipeGenerator = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Meal Type
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['breakfast', 'lunch', 'dinner'].map(type => (
+                <div className="grid grid-cols-2 gap-2">
+                  {mealTypeOptions.map(option => (
                     <button
-                      key={type}
-                      onClick={() => setMealType(type)}
+                      key={option.value}
+                      onClick={() => setMealType(option.value)}
                       className={`
-                        px-4 py-2 rounded-lg font-medium capitalize transition-colors
-                        ${mealType === type
+                        px-4 py-2 rounded-lg font-medium transition-colors
+                        ${mealType === option.value
                           ? 'bg-temple-purple dark:bg-temple-gold text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }
                       `}
                     >
-                      {type}
+                      {option.label}
                     </button>
                   ))}
                 </div>
@@ -216,19 +237,32 @@ export const RecipeGenerator = () => {
                 </div>
               </div>
 
-              {/* Include Scripture */}
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                <input
-                  type="checkbox"
-                  id="includeScripture"
-                  checked={includeScripture}
-                  onChange={(e) => setIncludeScripture(e.target.checked)}
-                  className="w-5 h-5 rounded text-temple-purple dark:text-temple-gold"
-                />
-                <label htmlFor="includeScripture" className="flex-1 flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
-                  <Book className="w-4 h-4" />
-                  Include Scripture Meditation
-                </label>
+              {/* Ingredient Preferences */}
+              <div className="grid gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Ingredients to Include (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={includeIngredients}
+                    onChange={(e) => setIncludeIngredients(e.target.value)}
+                    placeholder="e.g., salmon, spinach, garlic"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Ingredients to Exclude (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={excludeIngredients}
+                    onChange={(e) => setExcludeIngredients(e.target.value)}
+                    placeholder="e.g., peanuts, dairy, sugar"
+                    className="form-input"
+                  />
+                </div>
               </div>
 
               {/* Generate Button */}
@@ -306,7 +340,7 @@ export const RecipeGenerator = () => {
                       "{generatedRecipe.scripture.text}"
                     </p>
                     <p className="text-xs font-semibold text-temple-purple dark:text-temple-gold mb-2">
-                      — {generatedRecipe.scripture.reference}
+                      -- {generatedRecipe.scripture.reference}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       {generatedRecipe.scripture.reflection}
@@ -322,7 +356,7 @@ export const RecipeGenerator = () => {
                   <ul className="space-y-2">
                     {generatedRecipe.ingredients?.map((ingredient, index) => (
                       <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <span className="text-temple-purple dark:text-temple-gold">•</span>
+                        <span className="text-temple-purple dark:text-temple-gold">-</span>
                         <span><strong>{ingredient.amount} {ingredient.unit}</strong> {ingredient.item}</span>
                       </li>
                     ))}
@@ -357,7 +391,7 @@ export const RecipeGenerator = () => {
                     <ul className="space-y-1">
                       {generatedRecipe.tips.map((tip, index) => (
                         <li key={index} className="text-xs text-gray-700 dark:text-gray-300 flex items-start gap-2">
-                          <span className="text-temple-purple dark:text-temple-gold">•</span>
+                          <span className="text-temple-purple dark:text-temple-gold">-</span>
                           <span>{tip}</span>
                         </li>
                       ))}
@@ -380,5 +414,7 @@ export const RecipeGenerator = () => {
         </div>
       </div>
     </div>
+    <BottomNav />
+    </>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Check, X, Apple, Volume2, Smartphone, Save } from 'lucide-react'
 import { fastingService } from '../services/fastingService'
+import toast from 'react-hot-toast'
 
 const FASTING_TYPE_NAMES = {
   no_food: 'No-Food Fast',
@@ -62,10 +63,10 @@ export const FastingTracker = ({ userId, enrollmentId, fastingType, fastingWindo
         onSave()
       }
 
-      alert('✅ Fasting log saved successfully!')
+      toast.success('Fasting log saved! ✅')
     } catch (error) {
       console.error('Error saving fasting log:', error)
-      alert('Failed to save fasting log. Please try again.')
+      toast.error('Failed to save fasting log. Please try again.')
     } finally {
       setSaving(false)
     }

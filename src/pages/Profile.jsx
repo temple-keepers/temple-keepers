@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { AppHeader } from '../components/AppHeader'
+import { BottomNav } from '../components/BottomNav'
+import toast from 'react-hot-toast'
 import { 
   User, Mail, Calendar, Award, BookOpen, ChefHat, 
   Heart, CheckCircle, Edit2, Save, X, TrendingUp,
-  Activity, Target, Flame
+  Activity, Target, Flame, UtensilsCrossed, AlertCircle, Camera, Phone
 } from 'lucide-react'
 
 export const Profile = () => {
@@ -23,9 +25,14 @@ export const Profile = () => {
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const fileInputRef = useRef(null)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [editedProfile, setEditedProfile] = useState({
     first_name: '',
-    email: ''
+    email: '',
+    phone: '',
+    birth_year: ''
   })
   const [saving, setSaving] = useState(false)
 
@@ -39,8 +46,11 @@ export const Profile = () => {
     if (profile) {
       setEditedProfile({
         first_name: profile.first_name || '',
-        email: profile.email || ''
+        email: profile.email || '',
+        phone: profile.phone || '',
+        birth_year: profile.birth_year || ''
       })
+      setAvatarUrl(profile.avatar_url || '')
     }
   }, [profile])
 
@@ -53,6 +63,87 @@ export const Profile = () => {
     setLoading(false)
   }
 
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file || !user) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file.')
+      event.target.value = ''
+      return
+    }
+
+    const maxSizeBytes = 2 * 1024 * 1024
+    if (file.size > maxSizeBytes) {
+      toast.error('Please use an image under 2MB.')
+      event.target.value = ''
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      const bucketName = import.meta.env.VITE_SUPABASE_AVATAR_BUCKET || 'avatars'
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from(bucketName)
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) {
+        const message = uploadError.message || ''
+        if (message.toLowerCase().includes('bucket not found')) {
+          const dataUrl = await fileToDataUrl(file)
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ avatar_url: dataUrl })
+            .eq('id', user.id)
+
+          if (updateError) throw updateError
+
+          setAvatarUrl(dataUrl)
+          toast.success('Profile image saved!')
+          return
+        }
+
+        throw uploadError
+      }
+
+      const { data } = supabase
+        .storage
+        .from(bucketName)
+        .getPublicUrl(filePath)
+
+      const avatarUrl = data?.publicUrl
+      if (!avatarUrl) throw new Error('Failed to get avatar URL')
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
+      setAvatarUrl(avatarUrl)
+    } catch (error) {
+      console.error('Avatar upload error:', error)
+      toast.error('Failed to upload image. Please try again.')
+    } finally {
+      setUploadingAvatar(false)
+      event.target.value = ''
+    }
+  }
+
+
   const loadStats = async () => {
     // Programs enrolled
     const { data: enrollments } = await supabase
@@ -62,7 +153,7 @@ export const Profile = () => {
 
     const enrolled = enrollments?.length || 0
     const completed = enrollments?.filter(e => e.status === 'completed').length || 0
-    
+
     // Total days completed across all programs
     const totalDays = enrollments?.reduce((sum, e) => {
       return sum + (e.completed_days?.length || 0)
@@ -71,7 +162,8 @@ export const Profile = () => {
     // Current streak (days completed in last 7 days)
     const { data: recentCompletions } = await supabase
       .from('program_day_completions')
-      .select('completed_at')
+      .select('completed_at, program_enrollments!inner(user_id)')
+      .eq('program_enrollments.user_id', user.id)
       .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('completed_at', { ascending: false })
 
@@ -88,20 +180,16 @@ export const Profile = () => {
       .select('id')
       .eq('user_id', user.id)
 
-    // Check-ins and meals
-    const { data: logs } = await supabase
-      .from('daily_log_entries')
-      .select('entry_type, log_id')
-      .in('log_id', 
-        (await supabase
-          .from('daily_logs')
-          .select('id')
-          .eq('user_id', user.id)
-        ).data?.map(l => l.id) || []
-      )
+    // Wellness logs
+    const { data: checkIns } = await supabase
+      .from('wellness_check_ins')
+      .select('id')
+      .eq('user_id', user.id)
 
-    const checkIns = logs?.filter(l => l.entry_type === 'mood').length || 0
-    const meals = logs?.filter(l => l.entry_type === 'meal').length || 0
+    const { data: meals } = await supabase
+      .from('meal_logs')
+      .select('id')
+      .eq('user_id', user.id)
 
     setStats({
       programsEnrolled: enrolled,
@@ -110,8 +198,8 @@ export const Profile = () => {
       currentStreak: streak,
       recipesGenerated: recipes?.length || 0,
       recipesSaved: savedRecipes?.length || 0,
-      checkIns,
-      mealsLogged: meals
+      checkIns: checkIns?.length || 0,
+      mealsLogged: meals?.length || 0
     })
   }
 
@@ -145,6 +233,15 @@ export const Profile = () => {
   const loadRecentActivity = async () => {
     const activities = []
 
+    const formatLabel = (value) => {
+      if (!value) return 'Activity'
+      return value
+        .toString()
+        .split(/\s+/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+    }
+
     // Recent program enrollments
     const { data: enrollments } = await supabase
       .from('program_enrollments')
@@ -165,7 +262,8 @@ export const Profile = () => {
     // Recent day completions
     const { data: completions } = await supabase
       .from('program_day_completions')
-      .select('*, program_enrollments(programs(title))')
+      .select('day_number, completed_at, program_enrollments!inner(user_id, programs(title))')
+      .eq('program_enrollments.user_id', user.id)
       .order('completed_at', { ascending: false })
       .limit(3)
 
@@ -196,6 +294,58 @@ export const Profile = () => {
       })
     })
 
+    // Recent check-ins
+    const { data: checkIns } = await supabase
+      .from('wellness_check_ins')
+      .select('id, check_in_date, created_at')
+      .eq('user_id', user.id)
+      .order('check_in_date', { ascending: false })
+      .limit(3)
+
+    checkIns?.forEach(checkIn => {
+      activities.push({
+        type: 'checkin',
+        title: 'Daily Check-In',
+        date: checkIn.created_at || checkIn.check_in_date,
+        icon: Heart
+      })
+    })
+
+    // Recent meals
+    const { data: mealLogs } = await supabase
+      .from('meal_logs')
+      .select('id, meal_date, meal_time, description, meal_type, created_at')
+      .eq('user_id', user.id)
+      .order('meal_date', { ascending: false })
+      .limit(3)
+
+    mealLogs?.forEach(meal => {
+      activities.push({
+        type: 'meal',
+        title: `Meal logged (${formatLabel(meal.meal_type)})`,
+        subtitle: meal.description,
+        date: meal.created_at || `${meal.meal_date}T${meal.meal_time || '00:00'}`,
+        icon: UtensilsCrossed
+      })
+    })
+
+    // Recent symptoms
+    const { data: symptomLogs } = await supabase
+      .from('symptom_logs')
+      .select('id, symptom, log_date, log_time, created_at')
+      .eq('user_id', user.id)
+      .order('log_date', { ascending: false })
+      .limit(3)
+
+    symptomLogs?.forEach(symptom => {
+      activities.push({
+        type: 'symptom',
+        title: `Symptom logged (${formatLabel(symptom.symptom)})`,
+        date: symptom.created_at || `${symptom.log_date}T${symptom.log_time || '00:00'}`,
+        icon: AlertCircle
+      })
+    })
+
     // Sort all activities by date
     activities.sort((a, b) => new Date(b.date) - new Date(a.date))
 
@@ -205,11 +355,18 @@ export const Profile = () => {
   const handleSaveProfile = async () => {
     setSaving(true)
 
+    const birthYearValue = editedProfile.birth_year
+      ? parseInt(editedProfile.birth_year, 10)
+      : null
+    const phoneValue = editedProfile.phone ? editedProfile.phone.trim() : null
+
     const { error } = await supabase
       .from('profiles')
       .update({
         first_name: editedProfile.first_name,
-        email: editedProfile.email
+        email: editedProfile.email,
+        phone: phoneValue,
+        birth_year: birthYearValue
       })
       .eq('id', user.id)
 
@@ -218,7 +375,7 @@ export const Profile = () => {
       // Reload profile - in a real app, this would update the AuthContext
       window.location.reload()
     } else {
-      alert('Failed to update profile: ' + error.message)
+      toast.error('Failed to update profile: ' + error.message)
     }
 
     setSaving(false)
@@ -252,7 +409,8 @@ export const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       <AppHeader title="My Profile" />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -261,9 +419,39 @@ export const Profile = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             {/* Avatar */}
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-center text-white font-bold text-4xl">
-                {profile?.first_name?.charAt(0) || 'U'}
-              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="group relative"
+              >
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover border-2 border-white dark:border-gray-800"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-center text-white font-bold text-4xl">
+                    {profile?.first_name?.charAt(0) || 'U'}
+                  </div>
+                )}
+                <div className="absolute inset-0 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs font-semibold transition-opacity">
+                  <Camera className="w-4 h-4 mr-1" />
+                  Change
+                </div>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
+              {uploadingAvatar && (
+                <div className="absolute inset-0 rounded-full bg-black/60 text-white text-xs flex items-center justify-center">
+                  Uploading...
+                </div>
+              )}
               <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-green-500 border-4 border-white dark:border-gray-800 flex items-center justify-center">
                 <Flame className="w-4 h-4 text-white" />
               </div>
@@ -284,6 +472,7 @@ export const Profile = () => {
                       className="form-input w-full sm:w-auto"
                     />
                   </div>
+                  
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Email
@@ -293,6 +482,32 @@ export const Profile = () => {
                       value={editedProfile.email}
                       onChange={(e) => setEditedProfile({ ...editedProfile, email: e.target.value })}
                       className="form-input w-full sm:w-auto"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Mobile Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editedProfile.phone}
+                      onChange={(e) => setEditedProfile({ ...editedProfile, phone: e.target.value })}
+                      className="form-input w-full sm:w-auto"
+                      placeholder="e.g., +1 555 123 4567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Birth Year
+                    </label>
+                    <input
+                      type="number"
+                      min="1900"
+                      max={new Date().getFullYear()}
+                      value={editedProfile.birth_year}
+                      onChange={(e) => setEditedProfile({ ...editedProfile, birth_year: e.target.value })}
+                      className="form-input w-full sm:w-auto"
+                      placeholder="e.g., 1985"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -315,7 +530,7 @@ export const Profile = () => {
               ) : (
                 <>
                   <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                       {profile?.first_name || 'User'}
                     </h1>
                     <button
@@ -325,10 +540,23 @@ export const Profile = () => {
                       <Edit2 className="w-4 h-4" />
                     </button>
                   </div>
+                  
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-4">
                     <Mail className="w-4 h-4" />
                     <span>{profile?.email}</span>
                   </div>
+                  {profile?.phone && (
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                      <Phone className="w-4 h-4" />
+                      <span>{profile.phone}</span>
+                    </div>
+                  )}
+                  {profile?.birth_year && (
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>Birth Year {profile.birth_year}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-500">
                     <Calendar className="w-4 h-4" />
                     <span>Joined {new Date(profile?.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
@@ -340,7 +568,7 @@ export const Profile = () => {
             {/* Streak Badge */}
             {stats.currentStreak > 0 && (
               <div className="bg-gradient-to-br from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl text-center">
-                <div className="text-3xl font-bold">{stats.currentStreak}</div>
+                <div className="text-2xl font-bold">{stats.currentStreak}</div>
                 <div className="text-sm font-medium">Day Streak</div>
                 <Flame className="w-6 h-6 mx-auto mt-2" />
               </div>
@@ -351,11 +579,11 @@ export const Profile = () => {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Programs Enrolled */}
-          <div className="glass-card p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto mb-3">
+          <div className="glass-card p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mx-auto mb-3">
               <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {stats.programsEnrolled}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -364,11 +592,11 @@ export const Profile = () => {
           </div>
 
           {/* Days Completed */}
-          <div className="glass-card p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-3">
+          <div className="glass-card p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-3">
               <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {stats.totalDaysCompleted}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -377,11 +605,11 @@ export const Profile = () => {
           </div>
 
           {/* Recipes */}
-          <div className="glass-card p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
+          <div className="glass-card p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
               <ChefHat className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {stats.recipesGenerated}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -390,11 +618,11 @@ export const Profile = () => {
           </div>
 
           {/* Check-ins */}
-          <div className="glass-card p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mx-auto mb-3">
+          <div className="glass-card p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mx-auto mb-3">
               <Heart className="w-6 h-6 text-pink-600 dark:text-pink-400" />
             </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
               {stats.checkIns}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -416,7 +644,7 @@ export const Profile = () => {
 
               {recentActivity.length === 0 ? (
                 <div className="text-center py-8">
-                  <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <TrendingUp className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600 dark:text-gray-400">
                     Start your journey to see your activity here!
                   </p>
@@ -563,5 +791,7 @@ export const Profile = () => {
         </div>
       </div>
     </div>
+    <BottomNav />
+    </>
   )
 }

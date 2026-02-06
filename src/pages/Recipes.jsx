@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
-import { Plus, Search, Clock, Users, Heart, Sparkles } from 'lucide-react'
+import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice } from 'lucide-react'
 
 export const Recipes = () => {
   const navigate = useNavigate()
   const { recipes, loading, getRecipes } = useRecipes()
-  
+
   const [filters, setFilters] = useState({
     search: '',
     mealType: '',
@@ -38,9 +38,20 @@ export const Recipes = () => {
   }
 
   const dietaryOptions = [
-    'vegetarian', 'vegan', 'gluten-free', 'dairy-free',
-    'nut-free', 'low-carb', 'keto', 'paleo'
+    'daniel-fast',
+    'vegetarian', 'vegan', 'pescatarian', 'gluten-free', 'dairy-free',
+    'nut-free', 'low-carb', 'keto', 'paleo', 'whole-foods', 'mediterranean', 'low-sodium'
   ]
+
+  const getMealMeta = (mealType) => {
+    const normalized = String(mealType || '').toLowerCase()
+    if (normalized.includes('breakfast')) return { label: 'Breakfast', icon: Coffee }
+    if (normalized.includes('lunch')) return { label: 'Lunch', icon: Sandwich }
+    if (normalized.includes('dinner')) return { label: 'Dinner', icon: UtensilsCrossed }
+    if (normalized.includes('dessert')) return { label: 'Dessert', icon: CakeSlice }
+    if (normalized.includes('snack')) return { label: 'Snack', icon: Apple }
+    return { label: 'Recipe', icon: ChefHat }
+  }
 
   if (loading && recipes.length === 0) {
     return (
@@ -136,70 +147,80 @@ export const Recipes = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recipes.map(recipe => (
-              <div
-                key={recipe.id}
-                onClick={() => navigate(`/recipes/${recipe.id}`)}
-                className="glass-card overflow-hidden hover:scale-[1.02] transition-all cursor-pointer group"
-              >
-                {/* Recipe Image Placeholder */}
-                <div className="h-48 bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-center relative">
-                  <span className="text-6xl">🍽️</span>
-                  {recipe.scripture && (
-                    <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/90 flex items-center justify-center">
-                      <span className="text-sm">📖</span>
-                    </div>
-                  )}
-                </div>
+            {recipes.map(recipe => {
+              const meta = getMealMeta(recipe.meal_type)
+              const MealIcon = meta.icon
 
-                {/* Recipe Content */}
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-temple-purple dark:group-hover:text-temple-gold transition-colors">
-                    {recipe.title}
-                  </h3>
-                  
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]">
-                    {recipe.description}
-                  </p>
-
-                  {/* Meta Info */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>{recipe.total_time}min</span>
+              return (
+                <div
+                  key={recipe.id}
+                  onClick={() => navigate(`/recipes/${recipe.id}`)}
+                  className="glass-card overflow-hidden hover:scale-[1.02] transition-all cursor-pointer group"
+                >
+                  {/* Recipe Header */}
+                  <div className="h-24 bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-between px-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
+                        <MealIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-sm font-semibold text-white/90">{meta.label}</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                      <Users className="w-3.5 h-3.5" />
-                      <span>{recipe.servings}</span>
-                    </div>
-                    <div className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-xs font-medium text-green-700 dark:text-green-400">
-                      {recipe.difficulty}
-                    </div>
+                    {recipe.scripture && (
+                      <div className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/90 flex items-center justify-center">
+                        <Book className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
+                      </div>
+                    )}
                   </div>
 
-                  {/* Dietary Tags */}
-                  {recipe.dietary_tags && recipe.dietary_tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {recipe.dietary_tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-400 capitalize">
-                          {tag}
-                        </span>
-                      ))}
-                      {recipe.dietary_tags.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-medium text-gray-600 dark:text-gray-400">
-                          +{recipe.dietary_tags.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  {/* Recipe Content */}
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-temple-purple dark:group-hover:text-temple-gold transition-colors">
+                      {recipe.title}
+                    </h3>
 
-                  {/* CTA */}
-                  <button className="w-full py-2 px-4 rounded-lg bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 text-white font-semibold text-sm hover:shadow-lg transition-all">
-                    View Recipe →
-                  </button>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]">
+                      {recipe.description}
+                    </p>
+
+                    {/* Meta Info */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{recipe.total_time}min</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{recipe.servings}</span>
+                      </div>
+                      <div className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-xs font-medium text-green-700 dark:text-green-400">
+                        {recipe.difficulty}
+                      </div>
+                    </div>
+
+                    {/* Dietary Tags */}
+                    {recipe.dietary_tags && recipe.dietary_tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {recipe.dietary_tags.slice(0, 3).map(tag => (
+                          <span key={tag} className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-400 capitalize">
+                            {tag}
+                          </span>
+                        ))}
+                        {recipe.dietary_tags.length > 3 && (
+                          <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-medium text-gray-600 dark:text-gray-400">
+                            +{recipe.dietary_tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* CTA */}
+                    <button className="w-full py-2 px-4 rounded-lg bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 text-white font-semibold text-sm hover:shadow-lg transition-all">
+                      View Recipe &rarr;
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

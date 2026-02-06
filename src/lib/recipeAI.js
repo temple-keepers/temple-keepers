@@ -8,19 +8,31 @@ export const generateRecipe = async ({
   cuisine = 'any',
   cookingTime = 30,
   servings = 4,
+  includeIngredients = [],
+  excludeIngredients = [],
   includeScripture = true
 }) => {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
 
-    const dietaryText = dietaryRestrictions.length > 0 
+    const dietaryText = dietaryRestrictions.length > 0
       ? dietaryRestrictions.join(', ')
       : 'no restrictions'
+
+    const includeText = includeIngredients.length > 0
+      ? includeIngredients.join(', ')
+      : 'none specified'
+
+    const excludeText = excludeIngredients.length > 0
+      ? excludeIngredients.join(', ')
+      : 'none specified'
 
     const prompt = `
 Create a healthy, delicious ${mealType} recipe with the following parameters:
 - Cuisine: ${cuisine}
 - Dietary restrictions: ${dietaryText}
+- Must include: ${includeText}
+- Avoid: ${excludeText}
 - Cooking time: ~${cookingTime} minutes
 - Servings: ${servings}
 
@@ -76,21 +88,21 @@ Return ONLY valid JSON, no markdown formatting, no explanations.
 
     const result = await model.generateContent(prompt)
     const response = result.response.text()
-    
+
     // Clean response
     let cleanedResponse = response.trim()
-    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '')
-    cleanedResponse = cleanedResponse.replace(/```\n?/g, '')
+    cleanedResponse = cleanedResponse.replace(/```json\s*/g, '')
+    cleanedResponse = cleanedResponse.replace(/```\s*/g, '')
     cleanedResponse = cleanedResponse.trim()
-    
+
     const recipe = JSON.parse(cleanedResponse)
-    
+
     return { success: true, recipe }
   } catch (error) {
     console.error('Recipe generation error:', error)
-    return { 
-      success: false, 
-      error: error.message || 'Failed to generate recipe' 
+    return {
+      success: false,
+      error: error.message || 'Failed to generate recipe'
     }
   }
 }
@@ -104,7 +116,7 @@ export const generateMealPlan = async ({
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
 
-    const dietaryText = dietaryRestrictions.length > 0 
+    const dietaryText = dietaryRestrictions.length > 0
       ? dietaryRestrictions.join(', ')
       : 'no restrictions'
 
@@ -154,20 +166,20 @@ Return ONLY valid JSON.
 
     const result = await model.generateContent(prompt)
     const response = result.response.text()
-    
+
     let cleanedResponse = response.trim()
-    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '')
-    cleanedResponse = cleanedResponse.replace(/```\n?/g, '')
+    cleanedResponse = cleanedResponse.replace(/```json\s*/g, '')
+    cleanedResponse = cleanedResponse.replace(/```\s*/g, '')
     cleanedResponse = cleanedResponse.trim()
-    
+
     const mealPlan = JSON.parse(cleanedResponse)
-    
+
     return { success: true, mealPlan }
   } catch (error) {
     console.error('Meal plan generation error:', error)
-    return { 
-      success: false, 
-      error: error.message || 'Failed to generate meal plan' 
+    return {
+      success: false,
+      error: error.message || 'Failed to generate meal plan'
     }
   }
 }
@@ -193,20 +205,20 @@ Return ONLY valid JSON in the same format as the original recipe.
 
     const result = await model.generateContent(prompt)
     const response = result.response.text()
-    
+
     let cleanedResponse = response.trim()
-    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '')
-    cleanedResponse = cleanedResponse.replace(/```\n?/g, '')
+    cleanedResponse = cleanedResponse.replace(/```json\s*/g, '')
+    cleanedResponse = cleanedResponse.replace(/```\s*/g, '')
     cleanedResponse = cleanedResponse.trim()
-    
+
     const adjustedRecipe = JSON.parse(cleanedResponse)
-    
+
     return { success: true, recipe: adjustedRecipe }
   } catch (error) {
     console.error('Recipe adjustment error:', error)
-    return { 
-      success: false, 
-      error: error.message || 'Failed to adjust recipe' 
+    return {
+      success: false,
+      error: error.message || 'Failed to adjust recipe'
     }
   }
 }

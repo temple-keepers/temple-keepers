@@ -1,0 +1,44 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AppHeader } from '../components/AppHeader'
+import { useAuth } from '../contexts/AuthContext'
+import { wellnessService } from '../features/wellness/services/wellnessService'
+import { SymptomLogForm } from '../features/wellness/components/SymptomLogForm'
+import { BottomNav } from '../components/BottomNav'
+import toast from 'react-hot-toast'
+
+export const WellnessSymptomLog = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async (symptomData) => {
+    if (!user) return
+    setSaving(true)
+    try {
+      await wellnessService.createSymptomLog(user.id, symptomData)
+      toast.success('Symptom logged!')
+      navigate('/wellness')
+    } catch (error) {
+      console.error('Error saving symptom:', error)
+      toast.error('Failed to save symptom. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
+      <AppHeader title="Log Symptom" showBackButton={true} backTo="/wellness" />
+      <SymptomLogForm
+        onSave={handleSave}
+        onClose={() => navigate('/wellness')}
+        variant="page"
+        showClose={false}
+      />
+    </div>
+    <BottomNav />
+    </>
+  )
+}

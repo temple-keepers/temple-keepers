@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useEnrollment } from '../hooks/useEnrollment'
 import { FastingTracker } from '../features/fasting/components/FastingTracker'
+import { BottomNav } from '../components/BottomNav'
+import toast from 'react-hot-toast'
 import { ArrowLeft, ArrowRight, Check, BookOpen } from 'lucide-react'
 
 export const ProgramDay = () => {
@@ -124,7 +126,7 @@ export const ProgramDay = () => {
       // Reload to show completion
       await loadDayContent()
     } else {
-      alert('Failed to save completion')
+      toast.error('Failed to save completion')
     }
 
     setSaving(false)
@@ -261,7 +263,8 @@ export const ProgramDay = () => {
   if (!day) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4">
@@ -487,5 +490,7 @@ export const ProgramDay = () => {
         </div>
       </div>
     </div>
+    <BottomNav />
+    </>
   )
 }

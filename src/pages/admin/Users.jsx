@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useAdmin } from '../../contexts/AdminContext'
-import { Search, UserCog, Shield, Crown } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { Search, UserCog, Shield } from 'lucide-react'
 
 export const AdminUsers = () => {
   const { getUsers, updateUserRole, updateUserTier } = useAdmin()
@@ -8,6 +9,9 @@ export const AdminUsers = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [editingUser, setEditingUser] = useState(null)
+  const [lastActivityMap, setLastActivityMap] = useState({})
+  const [lastActivityLoading, setLastActivityLoading] = useState(false)
+  const [expandedUserId, setExpandedUserId] = useState(null)
 
   useEffect(() => {
     loadUsers()
@@ -16,20 +20,89 @@ export const AdminUsers = () => {
   const loadUsers = async () => {
     setLoading(true)
     const { data, error } = await getUsers({ search })
-    
+
     if (!error && data) {
       setUsers(data)
+      await loadLastActivity(data)
+    } else {
+      setUsers([])
+      setLastActivityMap({})
     }
-    
+
     setLoading(false)
+  }
+
+  const loadLastActivity = async (userList) => {
+    const userIds = (userList || []).map(user => user.id).filter(Boolean)
+    if (userIds.length === 0) {
+      setLastActivityMap({})
+      return
+    }
+
+    setLastActivityLoading(true)
+    try {
+      const [checkInsResult, mealsResult, symptomsResult, completionsResult, enrollmentsResult] = await Promise.all([
+        supabase
+          .from('wellness_check_ins')
+          .select('user_id, created_at')
+          .in('user_id', userIds),
+        supabase
+          .from('meal_logs')
+          .select('user_id, created_at')
+          .in('user_id', userIds),
+        supabase
+          .from('symptom_logs')
+          .select('user_id, created_at')
+          .in('user_id', userIds),
+        supabase
+          .from('program_day_completions')
+          .select('completed_at, program_enrollments!inner(user_id)')
+          .in('program_enrollments.user_id', userIds),
+        supabase
+          .from('program_enrollments')
+          .select('user_id, created_at')
+          .in('user_id', userIds)
+      ])
+
+      const latest = {}
+
+      const updateLatest = (userId, dateValue) => {
+        if (!userId || !dateValue) return
+        const timestamp = new Date(dateValue).getTime()
+        if (!latest[userId] || timestamp > latest[userId].timestamp) {
+          latest[userId] = { timestamp, date: dateValue }
+        }
+      }
+
+      checkInsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
+      mealsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
+      symptomsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
+      completionsResult.data?.forEach(row => updateLatest(row.program_enrollments?.user_id, row.completed_at))
+      enrollmentsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
+
+      const map = {}
+      Object.keys(latest).forEach((userId) => {
+        map[userId] = latest[userId].date
+      })
+      setLastActivityMap(map)
+    } catch (error) {
+      console.error('Error loading last activity:', error)
+    } finally {
+      setLastActivityLoading(false)
+    }
+  }
+
+  const formatActivityDate = (value) => {
+    if (!value) return 'No activity'
+    return new Date(value).toLocaleString()
   }
 
   const handleRoleChange = async (userId, newRole) => {
     const { data, error } = await updateUserRole(userId, newRole)
-    
+
     if (!error) {
       // Update local state
-      setUsers(users.map(u => 
+      setUsers(users.map(u =>
         u.id === userId ? { ...u, role: newRole } : u
       ))
       setEditingUser(null)
@@ -38,10 +111,10 @@ export const AdminUsers = () => {
 
   const handleTierChange = async (userId, newTier) => {
     const { data, error} = await updateUserTier(userId, newTier)
-    
+
     if (!error) {
       // Update local state
-      setUsers(users.map(u => 
+      setUsers(users.map(u =>
         u.id === userId ? { ...u, tier: newTier } : u
       ))
     }
@@ -73,7 +146,7 @@ export const AdminUsers = () => {
 
   return (
     <div className="space-y-6">
-      
+
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
@@ -108,7 +181,7 @@ export const AdminUsers = () => {
             {users.length}
           </p>
         </div>
-        
+
         <div className="glass-card p-4">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
             Premium Users
@@ -117,7 +190,7 @@ export const AdminUsers = () => {
             {users.filter(u => u.tier === 'premium').length}
           </p>
         </div>
-        
+
         <div className="glass-card p-4">
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
             Pro Users
@@ -147,6 +220,9 @@ export const AdminUsers = () => {
                   Joined
                 </th>
                 <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  Last Activity
+                </th>
+                <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Actions
                 </th>
               </tr>
@@ -154,91 +230,123 @@ export const AdminUsers = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center">
+                  <td colSpan="6" className="p-8 text-center">
                     <div className="spinner mx-auto"></div>
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan="6" className="p-8 text-center text-gray-500 dark:text-gray-400">
                     No users found
                   </td>
                 </tr>
               ) : (
                 users.map((user) => {
                   const RoleIcon = getRoleIcon(user.role)
-                  
+                  const lastActivity = lastActivityMap[user.id]
+                  const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Unnamed user'
+
                   return (
-                    <tr 
-                      key={user.id}
-                      className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                    >
-                      <td className="p-4">
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {user.first_name}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {user.email}
-                          </p>
-                        </div>
-                      </td>
-                      
-                      <td className="p-4">
-                        {editingUser === user.id ? (
+                    <Fragment key={user.id}>
+                      <tr
+                        className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      >
+                        <td className="p-4">
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {displayName}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {user.email}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="p-4">
+                          {editingUser === user.id ? (
+                            <select
+                              value={user.role}
+                              onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                              className="form-input text-sm py-1 px-2"
+                              onBlur={() => setEditingUser(null)}
+                              autoFocus
+                            >
+                              <option value="user">User</option>
+                              <option value="coach">Coach</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={() => setEditingUser(user.id)}
+                              className={`
+                                inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+                                ${getRoleBadgeColor(user.role)}
+                                hover:opacity-80 transition-opacity
+                              `}
+                            >
+                              {RoleIcon && <RoleIcon className="w-3 h-3" />}
+                              {user.role}
+                            </button>
+                          )}
+                        </td>
+
+                        <td className="p-4">
                           <select
-                            value={user.role}
-                            onChange={(e) => handleRoleChange(user.id, e.target.value)}
-                            className="form-input text-sm py-1 px-2"
-                            onBlur={() => setEditingUser(null)}
-                            autoFocus
-                          >
-                            <option value="user">User</option>
-                            <option value="coach">Coach</option>
-                            <option value="admin">Admin</option>
-                          </select>
-                        ) : (
-                          <button
-                            onClick={() => setEditingUser(user.id)}
+                            value={user.tier}
+                            onChange={(e) => handleTierChange(user.id, e.target.value)}
                             className={`
-                              inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
-                              ${getRoleBadgeColor(user.role)}
-                              hover:opacity-80 transition-opacity
+                              px-2.5 py-1 rounded-full text-xs font-medium border-0
+                              ${getTierBadgeColor(user.tier)}
                             `}
                           >
-                            {RoleIcon && <RoleIcon className="w-3 h-3" />}
-                            {user.role}
+                            <option value="free">Free</option>
+                            <option value="premium">Premium</option>
+                            <option value="pro">Pro</option>
+                          </select>
+                        </td>
+
+                        <td className="p-4">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </p>
+                        </td>
+
+                        <td className="p-4">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {lastActivityLoading ? 'Loading...' : formatActivityDate(lastActivity)}
+                          </p>
+                        </td>
+
+                        <td className="p-4">
+                          <button
+                            onClick={() => setExpandedUserId(expandedUserId === user.id ? null : user.id)}
+                            className="text-sm text-temple-purple dark:text-temple-gold hover:underline"
+                          >
+                            {expandedUserId === user.id ? 'Hide Details' : 'View Details'}
                           </button>
-                        )}
-                      </td>
-                      
-                      <td className="p-4">
-                        <select
-                          value={user.tier}
-                          onChange={(e) => handleTierChange(user.id, e.target.value)}
-                          className={`
-                            px-2.5 py-1 rounded-full text-xs font-medium border-0
-                            ${getTierBadgeColor(user.tier)}
-                          `}
-                        >
-                          <option value="free">Free</option>
-                          <option value="premium">Premium</option>
-                          <option value="pro">Pro</option>
-                        </select>
-                      </td>
-                      
-                      <td className="p-4">
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </p>
-                      </td>
-                      
-                      <td className="p-4">
-                        <button className="text-sm text-temple-purple dark:text-temple-gold hover:underline">
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
+                      {expandedUserId === user.id && (
+                        <tr className="bg-gray-50 dark:bg-gray-800/40">
+                          <td colSpan="6" className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-700 dark:text-gray-300">
+                              <div>
+                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Phone</p>
+                                <p>{user.phone || 'Not provided'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Birth Year</p>
+                                <p>{user.birth_year || 'Not provided'}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs uppercase text-gray-500 dark:text-gray-400">Last Activity</p>
+                                <p>{formatActivityDate(lastActivity)}</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })
               )}

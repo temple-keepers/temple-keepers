@@ -6,6 +6,7 @@ import { useCheckIns } from '../features/wellness/hooks/useCheckIns'
 import { useMealLogs } from '../features/wellness/hooks/useMealLogs'
 import { useSymptoms } from '../features/wellness/hooks/useSymptoms'
 import { wellnessService } from '../features/wellness/services/wellnessService'
+import { BottomNav } from '../components/BottomNav'
 import { 
   Calendar,
   TrendingUp,
@@ -117,28 +118,28 @@ export const Wellness = () => {
 
   return (
     <>
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       <AppHeader title="Wellness Hub" />
       
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* Quick Actions */}
         <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
           <button
-            onClick={() => navigate('/today')}
+            onClick={() => navigate('/wellness/check-in')}
             className="flex items-center gap-2 px-4 py-2.5 bg-temple-purple dark:bg-temple-gold text-white rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap shadow-md"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium">New Check-in</span>
           </button>
           <button
-            onClick={() => navigate('/today')}
+            onClick={() => navigate('/wellness/meals/new')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700 whitespace-nowrap"
           >
             <Apple className="w-5 h-5" />
             <span className="font-medium">Log Meal</span>
           </button>
           <button
-            onClick={() => navigate('/today')}
+            onClick={() => navigate('/wellness/symptoms/new')}
             className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700 whitespace-nowrap"
           >
             <AlertCircle className="w-5 h-5" />
@@ -269,6 +270,7 @@ export const Wellness = () => {
     </div>
     
     {/* Mobile Bottom Navigation */}
+    <BottomNav />
     </>
   )
 }
@@ -414,7 +416,7 @@ const CheckInsTab = ({ checkIns }) => {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No check-ins yet</h3>
         <p className="text-gray-600 dark:text-gray-400 mb-6">Start tracking your daily wellness</p>
         <button
-          onClick={() => window.location.href = '/today'}
+          onClick={() => window.location.href = '/wellness/check-in'}
           className="inline-flex items-center gap-2 px-6 py-3 bg-temple-purple dark:bg-temple-gold text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
         >
           <Plus className="w-5 h-5" />
@@ -641,7 +643,7 @@ const CheckInDetailModal = ({ checkIn, onClose }) => (
           <button
             onClick={() => {
               onClose()
-              window.location.href = '/today'
+              window.location.href = '/wellness/check-in'
             }}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-temple-purple dark:bg-temple-gold text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
           >
@@ -673,7 +675,7 @@ const MealsTab = ({ mealLogs }) => {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No meals logged yet</h3>
         <p className="text-gray-600 dark:text-gray-400 mb-6">Start tracking your nutrition</p>
         <button
-          onClick={() => window.location.href = '/today'}
+          onClick={() => window.location.href = '/wellness/meals/new'}
           className="inline-flex items-center gap-2 px-6 py-3 bg-temple-purple dark:bg-temple-gold text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
         >
           <Plus className="w-5 h-5" />

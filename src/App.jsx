@@ -14,6 +14,10 @@ import { ProgramDetail } from './pages/ProgramDetail'
 import { ProgramDay } from './pages/ProgramDay'
 import { Recipes } from './pages/Recipes'
 import { Wellness as WellnessHub } from './pages/WellnessHub'
+
+import { WellnessCheckIn } from './pages/WellnessCheckIn'
+import { WellnessMealLog } from './pages/WellnessMealLog'
+import { WellnessSymptomLog } from './pages/WellnessSymptomLog'
 import { RecipeDetail } from './pages/RecipeDetail'
 import { RecipeGenerator } from './pages/RecipeGenerator'
 import { Roadmap } from './pages/Roadmap'
@@ -134,7 +138,26 @@ function AppRoutes() {
           <WellnessHub />
         </ProtectedRoute>
       } />
-      
+
+
+      <Route path="/wellness/check-in" element={
+        <ProtectedRoute>
+          <WellnessCheckIn />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/wellness/meals/new" element={
+        <ProtectedRoute>
+          <WellnessMealLog />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/wellness/symptoms/new" element={
+        <ProtectedRoute>
+          <WellnessSymptomLog />
+        </ProtectedRoute>
+      } />
+            
       <Route path="/profile" element={
         <ProtectedRoute>
           <Profile />

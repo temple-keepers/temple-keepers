@@ -342,20 +342,26 @@ export const Landing = () => {
         </div>
       </section>
 
-      {/* Testimonial Section */}
+      {/* Testimonials Coming Soon */}
       <section className="py-24">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="glass-card p-12">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 mx-auto mb-6 flex items-center justify-center text-3xl">
               💜
             </div>
-            <blockquote className="text-2xl font-serif italic text-gray-700 dark:text-gray-300 mb-6">
-              "Finally, a wellness platform that doesn't compromise my faith or make me feel 
-              guilty when life happens. The grace-based approach is exactly what I needed."
-            </blockquote>
-            <p className="font-semibold text-gray-900 dark:text-white">
-              — Sarah M., Temple Keepers Member
+            <h3 className="text-2xl font-display font-bold text-gray-900 dark:text-white mb-4">
+              Real Stories Coming Soon
+            </h3>
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+              We're building a community of believers who are discovering a grace-filled 
+              approach to wellness. Their stories will be shared here soon.
             </p>
+            <button
+              onClick={() => navigate('/signup')}
+              className="btn-primary"
+            >
+              Be One of the First to Join
+            </button>
           </div>
         </div>
       </section>

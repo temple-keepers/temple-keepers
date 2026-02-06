@@ -6,6 +6,8 @@ import { StartDateModal } from '../components/StartDateModal'
 import { FastingTypeSelector } from '../features/fasting/components/FastingTypeSelector'
 import { useActiveCohorts } from '../features/fasting/hooks/useFasting'
 import { AppHeader } from '../components/AppHeader'
+import { BottomNav } from '../components/BottomNav'
+import toast from 'react-hot-toast'
 import { ArrowLeft, Calendar, Clock, BookOpen, Check } from 'lucide-react'
 
 export const ProgramDetail = () => {
@@ -109,7 +111,7 @@ export const ProgramDetail = () => {
       // Navigate to Day 1
       navigate(`/programs/${program.slug}/day/1`)
     } else {
-      alert(error?.message || 'Failed to enroll')
+      toast.error(error?.message || 'Failed to enroll')
     }
     
     setEnrolling(false)
@@ -153,7 +155,8 @@ export const ProgramDetail = () => {
   if (!program) return null
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
       {/* Header */}
       <AppHeader showBackButton={true} backTo="/programs" />
 
@@ -314,5 +317,7 @@ export const ProgramDetail = () => {
         programTitle={program?.title}
       />
     </div>
+    <BottomNav />
+    </>
   )
 }

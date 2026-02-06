@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Users, BookOpen, Calendar, TrendingUp, Download, Search, Filter, Eye, CheckCircle, XCircle } from 'lucide-react'
+import { Users, BookOpen, Calendar, TrendingUp, Search, Filter, CheckCircle, XCircle } from 'lucide-react'
 
 export const AdminEnrollments = () => {
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const hasLoadedRef = useRef(false)
   const [enrollments, setEnrollments] = useState([])
   const [programs, setPrograms] = useState([])
   const [selectedProgram, setSelectedProgram] = useState('all')
@@ -17,11 +19,29 @@ export const AdminEnrollments = () => {
 
   useEffect(() => {
     loadData()
+
+    const channel = supabase
+      .channel('admin-enrollments')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'program_enrollments' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'programs' }, () => loadData())
+      .subscribe()
+
+    const interval = setInterval(loadData, 30000)
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+    }
   }, [])
 
   const loadData = async () => {
-    setLoading(true)
-    
+    const isInitialLoad = !hasLoadedRef.current
+    if (isInitialLoad) {
+      setLoading(true)
+    } else {
+      setRefreshing(true)
+    }
+
     try {
       // Load all programs
       const { data: programsData } = await supabase
@@ -72,7 +92,9 @@ export const AdminEnrollments = () => {
     } catch (error) {
       console.error('Error loading enrollments:', error)
     } finally {
+      hasLoadedRef.current = true
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -86,30 +108,6 @@ export const AdminEnrollments = () => {
     
     return matchesProgram && matchesSearch
   })
-
-  const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Program', 'Start Date', 'Status', 'Days Complete', 'Progress %', 'Fasting Type', 'Fasting Window', 'In Cohort']
-    const rows = filteredEnrollments.map(e => [
-      `${e.profiles?.first_name || ''} ${e.profiles?.last_name || ''}`,
-      e.profiles?.email || '',
-      e.programs?.title || '',
-      e.start_date,
-      e.status,
-      `${e.completed_days?.length || 0}/${e.programs?.duration_days || 0}`,
-      `${getProgressPercentage(e)}%`,
-      e.fasting_type || 'N/A',
-      e.fasting_window || 'N/A',
-      e.cohort_id ? 'Yes' : 'No'
-    ])
-    
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `enrollments-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-  }
 
   const getProgressPercentage = (enrollment) => {
     const completed = enrollment.completed_days?.length || 0
@@ -128,13 +126,18 @@ export const AdminEnrollments = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
-          Program Enrollments
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Track user enrollments, progress, and fasting compliance
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
+            Program Enrollments
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Track user enrollments, progress, and fasting compliance
+          </p>
+        </div>
+        {refreshing && (
+          <span className="text-sm text-gray-500 dark:text-gray-400">Refreshing...</span>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -215,15 +218,6 @@ export const AdminEnrollments = () => {
               </select>
             </div>
           </div>
-
-          {/* Export Button */}
-          <button
-            onClick={exportToCSV}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <Download className="w-5 h-5" />
-            <span>Export CSV</span>
-          </button>
         </div>
       </div>
 

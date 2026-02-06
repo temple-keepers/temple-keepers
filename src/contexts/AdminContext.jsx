@@ -36,13 +36,14 @@ export const AdminProvider = ({ children }) => {
 
   // Get all users (admin only)
   const getUsers = async ({ search = '', limit = 50, offset = 0 } = {}) => {
-    if (!isAdmin) {
+    const isAuthorized = isAdmin || profile?.role === 'admin'
+    if (!isAuthorized) {
       return { data: null, error: new Error('Unauthorized') }
     }
 
     let query = supabase
       .from('profiles')
-      .select('id, first_name, email, role, tier, created_at')
+      .select('id, first_name, last_name, email, role, tier, phone, birth_year, created_at')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -57,7 +58,8 @@ export const AdminProvider = ({ children }) => {
 
   // Get user stats
   const getUserStats = async () => {
-    if (!isAdmin) {
+    const isAuthorized = isAdmin || profile?.role === 'admin'
+    if (!isAuthorized) {
       return { data: null, error: new Error('Unauthorized') }
     }
 
@@ -92,7 +94,8 @@ export const AdminProvider = ({ children }) => {
 
   // Update user role
   const updateUserRole = async (userId, newRole) => {
-    if (!isAdmin) {
+    const isAuthorized = isAdmin || profile?.role === 'admin'
+    if (!isAuthorized) {
       return { data: null, error: new Error('Unauthorized') }
     }
 
@@ -108,7 +111,8 @@ export const AdminProvider = ({ children }) => {
 
   // Update user tier
   const updateUserTier = async (userId, newTier) => {
-    if (!isAdmin) {
+    const isAuthorized = isAdmin || profile?.role === 'admin'
+    if (!isAuthorized) {
       return { data: null, error: new Error('Unauthorized') }
     }
 
