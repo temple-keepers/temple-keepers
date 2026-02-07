@@ -59,11 +59,16 @@ export const Profile = () => {
 
   const loadDashboard = async () => {
     setLoading(true)
-    await Promise.all([
-      loadStats(),
-      loadRecentActivity()
-    ])
-    setLoading(false)
+    try {
+      await Promise.all([
+        loadStats(),
+        loadRecentActivity()
+      ])
+    } catch (err) {
+      console.error('Dashboard load error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fileToDataUrl = (file) => new Promise((resolve, reject) => {
@@ -148,211 +153,92 @@ export const Profile = () => {
 
 
   const loadStats = async () => {
-    // Programs enrolled
-    const { data: enrollments } = await supabase
-      .from('program_enrollments')
-      .select('*, programs(title, duration_days)')
-      .eq('user_id', user.id)
+    // Each query is independent — one failing shouldn't zero out the others
+    const safe = (promise) => promise.catch(err => {
+      console.warn('Stats query failed:', err)
+      return { data: null, count: null, error: err }
+    })
 
-    const enrolled = enrollments?.length || 0
-    const completed = enrollments?.filter(e => e.status === 'completed').length || 0
+    const [enrollResult, recipesResult, savedResult, checkInsResult, mealsResult, streakResult] = await Promise.all([
+      safe(supabase.from('program_enrollments').select('status, completed_days, programs(title, duration_days)').eq('user_id', user.id)),
+      safe(supabase.from('recipes').select('id', { count: 'exact', head: true }).eq('created_by', user.id)),
+      safe(supabase.from('saved_recipes').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
+      safe(supabase.from('wellness_check_ins').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
+      safe(supabase.from('meal_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
+      safe(supabase.rpc('get_user_streak', { p_user_id: user.id }))
+    ])
 
-    // Total days completed across all programs
-    const totalDays = enrollments?.reduce((sum, e) => {
-      return sum + (e.completed_days?.length || 0)
-    }, 0) || 0
-
-    // Current streak (days completed in last 7 days)
-    const { data: recentCompletions } = await supabase
-      .from('program_day_completions')
-      .select('completed_at, program_enrollments!inner(user_id)')
-      .eq('program_enrollments.user_id', user.id)
-      .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-      .order('completed_at', { ascending: false })
-
-    const streak = calculateStreak(recentCompletions)
-
-    // Recipes
-    const { data: recipes } = await supabase
-      .from('recipes')
-      .select('id')
-      .eq('created_by', user.id)
-
-    const { data: savedRecipes } = await supabase
-      .from('saved_recipes')
-      .select('id')
-      .eq('user_id', user.id)
-
-    // Wellness logs
-    const { data: checkIns } = await supabase
-      .from('wellness_check_ins')
-      .select('id')
-      .eq('user_id', user.id)
-
-    const { data: meals } = await supabase
-      .from('meal_logs')
-      .select('id')
-      .eq('user_id', user.id)
+    const enrollments = enrollResult.data || []
+    const totalDays = enrollments.reduce((sum, e) => sum + (e.completed_days?.length || 0), 0)
 
     setStats({
-      programsEnrolled: enrolled,
-      programsCompleted: completed,
+      programsEnrolled: enrollments.length,
+      programsCompleted: enrollments.filter(e => e.status === 'completed').length,
       totalDaysCompleted: totalDays,
-      currentStreak: streak,
-      recipesGenerated: recipes?.length || 0,
-      recipesSaved: savedRecipes?.length || 0,
-      checkIns: checkIns?.length || 0,
-      mealsLogged: meals?.length || 0
+      currentStreak: streakResult.data?.streak || 0,
+      recipesGenerated: recipesResult.count || 0,
+      recipesSaved: savedResult.count || 0,
+      checkIns: checkInsResult.count || 0,
+      mealsLogged: mealsResult.count || 0
     })
-  }
-
-  const calculateStreak = (completions) => {
-    if (!completions || completions.length === 0) return 0
-    
-    let streak = 0
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    for (let i = 0; i < 7; i++) {
-      const checkDate = new Date(today)
-      checkDate.setDate(checkDate.getDate() - i)
-      
-      const hasCompletion = completions.some(c => {
-        const completionDate = new Date(c.completed_at)
-        completionDate.setHours(0, 0, 0, 0)
-        return completionDate.getTime() === checkDate.getTime()
-      })
-      
-      if (hasCompletion) {
-        streak++
-      } else if (i > 0) {
-        break
-      }
-    }
-    
-    return streak
   }
 
   const loadRecentActivity = async () => {
-    const activities = []
+    try {
+      const activities = []
 
-    const formatLabel = (value) => {
-      if (!value) return 'Activity'
-      return value
-        .toString()
-        .split(/\s+/)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
+      const formatLabel = (value) => {
+        if (!value) return 'Activity'
+        return value
+          .toString()
+          .split(/\s+/)
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
+      }
+
+      // Run all queries in parallel for speed
+      const [enrollResult, completionResult, recipesResult, checkInsResult, mealResult, symptomResult] = await Promise.all([
+        supabase.from('program_enrollments').select('created_at, programs(title)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.from('program_enrollments').select('id, programs(title), program_day_completions(day_number, completed_at)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('recipes').select('title, created_at').eq('created_by', user.id).order('created_at', { ascending: false }).limit(3),
+        supabase.from('wellness_check_ins').select('id, check_in_date, created_at').eq('user_id', user.id).order('check_in_date', { ascending: false }).limit(3),
+        supabase.from('meal_logs').select('id, meal_date, meal_time, description, meal_type, created_at').eq('user_id', user.id).order('meal_date', { ascending: false }).limit(3),
+        supabase.from('symptom_logs').select('id, symptom, log_date, log_time, created_at').eq('user_id', user.id).order('log_date', { ascending: false }).limit(3)
+      ])
+
+      enrollResult.data?.forEach(e => {
+        activities.push({ type: 'enrollment', title: `Enrolled in ${e.programs?.title || 'a program'}`, date: e.created_at, icon: BookOpen })
+      })
+
+      // Flatten completions from enrollments (avoids the problematic join-filter)
+      completionResult.data?.forEach(e => {
+        (e.program_day_completions || []).forEach(c => {
+          activities.push({ type: 'completion', title: `Completed Day ${c.day_number}`, subtitle: e.programs?.title, date: c.completed_at, icon: CheckCircle })
+        })
+      })
+
+      recipesResult.data?.forEach(r => {
+        activities.push({ type: 'recipe', title: `Created ${r.title}`, date: r.created_at, icon: ChefHat })
+      })
+
+      checkInsResult.data?.forEach(c => {
+        activities.push({ type: 'checkin', title: 'Daily Check-In', date: c.created_at || c.check_in_date, icon: Heart })
+      })
+
+      mealResult.data?.forEach(meal => {
+        activities.push({ type: 'meal', title: `Meal logged (${formatLabel(meal.meal_type)})`, subtitle: meal.description, date: meal.created_at || `${meal.meal_date}T${meal.meal_time || '00:00'}`, icon: UtensilsCrossed })
+      })
+
+      symptomResult.data?.forEach(s => {
+        activities.push({ type: 'symptom', title: `Symptom logged (${formatLabel(s.symptom)})`, date: s.created_at || `${s.log_date}T${s.log_time || '00:00'}`, icon: AlertCircle })
+      })
+
+      activities.sort((a, b) => new Date(b.date) - new Date(a.date))
+      setRecentActivity(activities.slice(0, 10))
+    } catch (err) {
+      console.error('Error loading recent activity:', err)
+      setRecentActivity([])
     }
-
-    // Recent program enrollments
-    const { data: enrollments } = await supabase
-      .from('program_enrollments')
-      .select('*, programs(title)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(3)
-
-    enrollments?.forEach(e => {
-      activities.push({
-        type: 'enrollment',
-        title: `Enrolled in ${e.programs.title}`,
-        date: e.created_at,
-        icon: BookOpen
-      })
-    })
-
-    // Recent day completions
-    const { data: completions } = await supabase
-      .from('program_day_completions')
-      .select('day_number, completed_at, program_enrollments!inner(user_id, programs(title))')
-      .eq('program_enrollments.user_id', user.id)
-      .order('completed_at', { ascending: false })
-      .limit(3)
-
-    completions?.forEach(c => {
-      activities.push({
-        type: 'completion',
-        title: `Completed Day ${c.day_number}`,
-        subtitle: c.program_enrollments?.programs?.title,
-        date: c.completed_at,
-        icon: CheckCircle
-      })
-    })
-
-    // Recent recipes
-    const { data: recipes } = await supabase
-      .from('recipes')
-      .select('title, created_at')
-      .eq('created_by', user.id)
-      .order('created_at', { ascending: false })
-      .limit(3)
-
-    recipes?.forEach(r => {
-      activities.push({
-        type: 'recipe',
-        title: `Created ${r.title}`,
-        date: r.created_at,
-        icon: ChefHat
-      })
-    })
-
-    // Recent check-ins
-    const { data: checkIns } = await supabase
-      .from('wellness_check_ins')
-      .select('id, check_in_date, created_at')
-      .eq('user_id', user.id)
-      .order('check_in_date', { ascending: false })
-      .limit(3)
-
-    checkIns?.forEach(checkIn => {
-      activities.push({
-        type: 'checkin',
-        title: 'Daily Check-In',
-        date: checkIn.created_at || checkIn.check_in_date,
-        icon: Heart
-      })
-    })
-
-    // Recent meals
-    const { data: mealLogs } = await supabase
-      .from('meal_logs')
-      .select('id, meal_date, meal_time, description, meal_type, created_at')
-      .eq('user_id', user.id)
-      .order('meal_date', { ascending: false })
-      .limit(3)
-
-    mealLogs?.forEach(meal => {
-      activities.push({
-        type: 'meal',
-        title: `Meal logged (${formatLabel(meal.meal_type)})`,
-        subtitle: meal.description,
-        date: meal.created_at || `${meal.meal_date}T${meal.meal_time || '00:00'}`,
-        icon: UtensilsCrossed
-      })
-    })
-
-    // Recent symptoms
-    const { data: symptomLogs } = await supabase
-      .from('symptom_logs')
-      .select('id, symptom, log_date, log_time, created_at')
-      .eq('user_id', user.id)
-      .order('log_date', { ascending: false })
-      .limit(3)
-
-    symptomLogs?.forEach(symptom => {
-      activities.push({
-        type: 'symptom',
-        title: `Symptom logged (${formatLabel(symptom.symptom)})`,
-        date: symptom.created_at || `${symptom.log_date}T${symptom.log_time || '00:00'}`,
-        icon: AlertCircle
-      })
-    })
-
-    // Sort all activities by date
-    activities.sort((a, b) => new Date(b.date) - new Date(a.date))
-
-    setRecentActivity(activities.slice(0, 10))
   }
 
   const handleSaveProfile = async () => {
@@ -747,67 +633,22 @@ export const Profile = () => {
               <span className="text-gray-400 dark:text-gray-500 text-xl">›</span>
             </button>
 
-            {/* Achievements Preview */}
-            <div className="glass-card p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Award className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
-                <h3 className="font-semibold text-gray-900 dark:text-white">
-                  Achievements
-                </h3>
+            {/* Achievements & Level */}
+            <button
+              onClick={() => navigate('/achievements')}
+              className="w-full glass-card p-5 flex items-center gap-4 hover:border-temple-purple dark:hover:border-temple-gold transition-colors text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-center flex-shrink-0">
+                <Award className="w-6 h-6 text-white" />
               </div>
-
-              <div className="space-y-3">
-                {stats.totalDaysCompleted >= 7 && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                    <div className="text-2xl">🌟</div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white text-sm">
-                        First Week
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        Completed 7 days
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {stats.recipesGenerated >= 10 && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                    <div className="text-2xl">👨‍🍳</div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white text-sm">
-                        Recipe Creator
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        Generated 10 recipes
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {stats.currentStreak >= 7 && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20">
-                    <div className="text-2xl">🔥</div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white text-sm">
-                        On Fire
-                      </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        7-day streak
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {stats.totalDaysCompleted === 0 && stats.recipesGenerated === 0 && (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Complete activities to earn achievements!
-                    </p>
-                  </div>
-                )}
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Achievements & Level</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Level {profile?.current_level || 1} · {profile?.total_points || 0} points · View badges
+                </p>
               </div>
-            </div>
+              <span className="text-gray-400 dark:text-gray-500 text-xl">›</span>
+            </button>
           </div>
         </div>
       </div>

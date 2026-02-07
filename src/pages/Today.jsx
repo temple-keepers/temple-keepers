@@ -7,6 +7,8 @@ import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
 import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
 import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users, Sparkles, X } from 'lucide-react'
+import { WeeklyThemeCard } from '../components/WeeklyThemeCard'
+import { StreakBadge } from '../components/StreakBadge'
 import { NotificationBell } from '../components/NotificationBell'
 import { notificationService } from '../services/notificationService'
 import { useNavigate } from 'react-router-dom'
@@ -14,7 +16,7 @@ import { useNavigate } from 'react-router-dom'
 export const Today = () => {
   const { user, profile, signOut } = useAuth()
   const { isDark, toggleTheme } = useTheme()
-  const { devotional, loading: devotionalLoading } = useDevotional()
+  const { devotional, weeklyTheme, loading: devotionalLoading } = useDevotional()
   const { getActiveEnrollments } = useEnrollment()
   const [greeting, setGreeting] = useState('')
   const [timeIcon, setTimeIcon] = useState(Sun)
@@ -225,6 +227,16 @@ export const Today = () => {
           </div>
         </div>
 
+        {/* Streak Tracker */}
+        <StreakBadge />
+
+        {/* Weekly Theme + Daily Devotional (merged) */}
+        <WeeklyThemeCard
+          devotional={devotional}
+          weeklyTheme={weeklyTheme}
+          devotionalLoading={devotionalLoading}
+        />
+
         {/* Join the Fast Banner — shows for users not enrolled in Make Room */}
         {showJoinBanner && showBannerInTime && (
           <div className="relative animate-fade-in overflow-hidden rounded-2xl bg-gradient-to-br from-temple-purple via-temple-purple-dark to-purple-900 dark:from-[#2a1854] dark:via-[#1e1145] dark:to-[#120b2e] p-6 md:p-8 shadow-xl">
@@ -277,45 +289,7 @@ export const Today = () => {
           </div>
         )}
 
-        {/* Block 2: Daily Bread (Devotional) */}
-        <div className="scripture-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-temple-purple to-temple-purple-dark flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <h2 className="text-lg font-semibold text-temple-purple dark:text-[#E8C49A]">Daily Bread</h2>
-            </div>
 
-            {devotionalLoading ? (
-              <div className="text-center py-8">
-                <div className="spinner mx-auto mb-3"></div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Preparing today's devotional...
-                </p>
-              </div>
-            ) : devotional ? (
-              <>
-                <p className="devotional-verse mb-4">
-                  "{devotional.verse}"
-                </p>
-                <p className="devotional-reference">
-                  -- {devotional.reference}
-                </p>
-
-                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    {devotional.reflection}
-                  </p>
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <p className="text-sm">Unable to load today's devotional.</p>
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* Block 3: One Small Step (Actions) */}
         <div className="action-card animate-fade-in" style={{ animationDelay: '0.2s' }}>

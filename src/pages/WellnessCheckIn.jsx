@@ -6,12 +6,14 @@ import { wellnessService } from '../features/wellness/services/wellnessService'
 import { CheckInForm } from '../features/wellness/components/CheckInForm'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
+import { useGamification } from '../hooks/useGamification'
 
 export const WellnessCheckIn = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [existingCheckIn, setExistingCheckIn] = useState(null)
   const [loading, setLoading] = useState(true)
+  const { trackAction } = useGamification()
 
   useEffect(() => {
     if (!user) return
@@ -34,7 +36,8 @@ export const WellnessCheckIn = () => {
 
   const handleSave = async (checkInData) => {
     try {
-      await wellnessService.saveCheckIn(user.id, checkInData)
+      const saved = await wellnessService.saveCheckIn(user.id, checkInData)
+      trackAction('wellness_checkin', 'checkin', saved?.id || null)
       toast.success('Check-in saved! 🙏')
       navigate('/wellness')
     } catch (error) {

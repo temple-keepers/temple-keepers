@@ -1,29 +1,52 @@
 import { useState, useEffect } from 'react'
 import { generateDevotional, getFallbackDevotional } from '../lib/devotional'
 import { useTodayLog } from './useTodayLog'
+import { supabase } from '../lib/supabase'
+import { useGamification } from './useGamification'
 
 /**
  * Hook to manage daily devotional content
- * - Checks if today's devotional exists in database
- * - If not, generates new one with Gemini
+ * - Loads current weekly theme
+ * - Generates themed devotional via Gemini (or general if no theme)
  * - Caches in database (one per day)
- * - Returns devotional data for display
  */
 export const useDevotional = () => {
   const { logId, getEntriesByType, addEntry } = useTodayLog()
+  const { trackAction } = useGamification()
   const [devotional, setDevotional] = useState(null)
+  const [weeklyTheme, setWeeklyTheme] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Load weekly theme on mount
+  useEffect(() => {
+    loadWeeklyTheme()
+  }, [])
+
+  // Generate devotional once we have logId (and optionally a theme)
   useEffect(() => {
     if (logId) {
       loadOrGenerateDevotional()
     }
-  }, [logId])
+  }, [logId, weeklyTheme])
 
-  /**
-   * Load existing devotional or generate new one
-   */
+  const loadWeeklyTheme = async () => {
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const { data } = await supabase
+        .from('weekly_themes')
+        .select('*')
+        .lte('week_start', today)
+        .gte('week_end', today)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (data) setWeeklyTheme(data)
+    } catch (err) {
+      console.error('Failed to load weekly theme:', err)
+    }
+  }
+
   const loadOrGenerateDevotional = async () => {
     try {
       setLoading(true)
@@ -33,41 +56,35 @@ export const useDevotional = () => {
       const existingDevotionals = getEntriesByType('devotional')
       
       if (existingDevotionals.length > 0) {
-        // Use existing devotional
         setDevotional(existingDevotionals[0].entry_data)
         setLoading(false)
         return
       }
 
-      // No devotional exists - generate new one
+      // Generate new one — pass theme if available
       console.log('Generating new devotional...')
-      const result = await generateDevotional()
+      const themeData = weeklyTheme ? {
+        title: weeklyTheme.title,
+        scripture: weeklyTheme.scripture,
+        reference: weeklyTheme.scripture_reference
+      } : null
+
+      const result = await generateDevotional(themeData)
 
       if (result.success) {
-        // Save to database
-        const { error: saveError } = await addEntry('devotional', result.data)
-        
-        if (saveError) {
-          console.error('Error saving devotional:', saveError)
-          // Use it anyway, just don't cache
-          setDevotional(result.data)
-        } else {
-          setDevotional(result.data)
-        }
+        const { data: saved, error: saveError } = await addEntry('devotional', result.data)
+        if (saveError) console.error('Error saving devotional:', saveError)
+        setDevotional(result.data)
+        trackAction('devotional_read', 'devotional', saved?.id || null)
       } else {
-        // AI generation failed - use fallback
         console.warn('AI generation failed, using fallback')
         const fallback = getFallbackDevotional()
-        
-        // Try to save fallback
         await addEntry('devotional', fallback)
         setDevotional(fallback)
       }
     } catch (err) {
       console.error('Error loading devotional:', err)
       setError(err.message)
-      
-      // Use fallback on any error
       const fallback = getFallbackDevotional()
       setDevotional(fallback)
     } finally {
@@ -75,23 +92,25 @@ export const useDevotional = () => {
     }
   }
 
-  /**
-   * Force regenerate devotional (for testing or if user wants a new one)
-   */
   const regenerate = async () => {
     setLoading(true)
-    const result = await generateDevotional()
-    
+    const themeData = weeklyTheme ? {
+      title: weeklyTheme.title,
+      scripture: weeklyTheme.scripture,
+      reference: weeklyTheme.scripture_reference
+    } : null
+
+    const result = await generateDevotional(themeData)
     if (result.success) {
       await addEntry('devotional', result.data)
       setDevotional(result.data)
     }
-    
     setLoading(false)
   }
 
   return {
     devotional,
+    weeklyTheme,
     loading,
     error,
     regenerate

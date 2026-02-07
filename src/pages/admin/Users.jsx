@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { Search, UserCog, Shield } from 'lucide-react'
 
 export const AdminUsers = () => {
-  const { getUsers, updateUserRole, updateUserTier } = useAdmin()
+  const { getUsers, updateUserRole, updateUserTier, isAdmin: adminReady } = useAdmin()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -14,22 +14,29 @@ export const AdminUsers = () => {
   const [expandedUserId, setExpandedUserId] = useState(null)
 
   useEffect(() => {
-    loadUsers()
-  }, [search])
+    if (adminReady) loadUsers()
+  }, [search, adminReady])
 
   const loadUsers = async () => {
     setLoading(true)
-    const { data, error } = await getUsers({ search })
+    try {
+      const { data, error } = await getUsers({ search })
 
-    if (!error && data) {
-      setUsers(data)
-      await loadLastActivity(data)
-    } else {
+      if (!error && data) {
+        setUsers(data)
+        // Load activity in background — don't block user list
+        loadLastActivity(data).catch(err => console.error('Activity load failed:', err))
+      } else {
+        console.warn('getUsers returned error or no data:', error)
+        setUsers([])
+        setLastActivityMap({})
+      }
+    } catch (err) {
+      console.error('loadUsers failed:', err)
       setUsers([])
-      setLastActivityMap({})
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const loadLastActivity = async (userList) => {
@@ -41,7 +48,7 @@ export const AdminUsers = () => {
 
     setLastActivityLoading(true)
     try {
-      const [checkInsResult, mealsResult, symptomsResult, completionsResult, enrollmentsResult] = await Promise.all([
+      const [checkInsResult, mealsResult, symptomsResult, enrollmentsResult] = await Promise.all([
         supabase
           .from('wellness_check_ins')
           .select('user_id, created_at')
@@ -54,10 +61,6 @@ export const AdminUsers = () => {
           .from('symptom_logs')
           .select('user_id, created_at')
           .in('user_id', userIds),
-        supabase
-          .from('program_day_completions')
-          .select('completed_at, program_enrollments!inner(user_id)')
-          .in('program_enrollments.user_id', userIds),
         supabase
           .from('program_enrollments')
           .select('user_id, created_at')
@@ -77,7 +80,6 @@ export const AdminUsers = () => {
       checkInsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
       mealsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
       symptomsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
-      completionsResult.data?.forEach(row => updateLatest(row.program_enrollments?.user_id, row.completed_at))
       enrollmentsResult.data?.forEach(row => updateLatest(row.user_id, row.created_at))
 
       const map = {}

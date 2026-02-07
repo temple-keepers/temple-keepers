@@ -156,30 +156,58 @@ export const notificationService = {
 
   // === NOTIFICATION PREFERENCES ===
 
+  _defaults(userId) {
+    return {
+      user_id: userId,
+      push_enabled: true,
+      devotional_reminder: true,
+      fasting_reminder: true,
+      live_session_reminder: true,
+      community_notifications: true,
+      morning_enabled: true,
+      morning_time: '07:00:00',
+      evening_enabled: true,
+      evening_time: '19:00:00',
+      reminder_time: '07:00:00'
+    }
+  },
+
   async getPreferences(userId) {
-    const { data, error } = await supabase
-      .from('notification_preferences')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-    
-    if (error?.code === 'PGRST116') {
-      const { data: newData } = await supabase
+    try {
+      // Try to fetch existing row
+      const { data, error } = await supabase
         .from('notification_preferences')
-        .insert([{ user_id: userId }])
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (data) return data
+
+      // No row — create one via upsert (handles race conditions)
+      const { data: newData, error: upsertErr } = await supabase
+        .from('notification_preferences')
+        .upsert({ user_id: userId }, { onConflict: 'user_id' })
         .select()
         .single()
+
+      if (upsertErr || !newData) {
+        console.error('Failed to create notification prefs:', upsertErr)
+        return this._defaults(userId)
+      }
       return newData
+    } catch (err) {
+      console.error('getPreferences error:', err)
+      return this._defaults(userId)
     }
-    
-    return data
   },
 
   async updatePreferences(userId, prefs) {
     const { data, error } = await supabase
       .from('notification_preferences')
-      .update({ ...prefs, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
+      .upsert(
+        { user_id: userId, ...prefs, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      )
       .select()
       .single()
     

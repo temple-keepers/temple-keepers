@@ -36,8 +36,16 @@ export const AdminProvider = ({ children }) => {
 
   // Get all users (admin only)
   const getUsers = async ({ search = '', limit = 50, offset = 0 } = {}) => {
-    const isAuthorized = isAdmin || profile?.role === 'admin'
-    if (!isAuthorized) {
+    // Direct DB check to avoid stale closure issues
+    if (!user?.id) return { data: null, error: new Error('Not authenticated') }
+    
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    if (currentProfile?.role !== 'admin') {
       return { data: null, error: new Error('Unauthorized') }
     }
 

@@ -6,17 +6,20 @@ import { wellnessService } from '../features/wellness/services/wellnessService'
 import { MealLogForm } from '../features/wellness/components/MealLogForm'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
+import { useGamification } from '../hooks/useGamification'
 
 export const WellnessMealLog = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
+  const { trackAction } = useGamification()
 
   const handleSave = async (mealData) => {
     if (!user) return
     setSaving(true)
     try {
-      await wellnessService.createMealLog(user.id, mealData)
+      const saved = await wellnessService.createMealLog(user.id, mealData)
+      trackAction('meal_logged', 'meal', saved?.id || null)
       toast.success('Meal logged! 🍽️')
       navigate('/wellness')
     } catch (error) {

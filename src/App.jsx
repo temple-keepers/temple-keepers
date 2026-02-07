@@ -40,6 +40,7 @@ const AboutDenise = lazy(() => import('./pages/AboutDenise').then(m => ({ defaul
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Cookies = lazy(() => import('./pages/Cookies').then(m => ({ default: m.Cookies })))
+const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })))
 
 // Admin — lazy loaded as a group (only admins ever need these)
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -152,6 +153,7 @@ function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
       <Route path="/notification-settings" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
+      <Route path="/achievements" element={<ProtectedRoute><Achievements /></ProtectedRoute>} />
 
       {/* Community */}
       <Route path="/pods" element={<ProtectedRoute><Pods /></ProtectedRoute>} />

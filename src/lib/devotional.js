@@ -38,17 +38,25 @@ export const generateDevotional = async (theme = null) => {
  * Create a themed prompt (for weekly themes)
  */
 const createThemedPrompt = (theme) => {
+  // Use day-of-week to get variety across the week
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const today = dayNames[new Date().getDay()]
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
+
   return `You are a pastoral, Christ-centered devotional writer for Temple Keepers, a Christian wellness app.
 
 THEME FOR THIS WEEK: "${theme.title}"
-SCRIPTURE FOCUS: ${theme.scripture} (${theme.reference})
+WEEKLY SCRIPTURE: ${theme.scripture} (${theme.reference})
+TODAY IS: ${today} (day seed: ${dayOfYear})
 
-Generate a daily devotional that:
-1. Connects the weekly Scripture theme to stewarding the body as a temple
-2. Is 2-3 sentences of gentle reflection
-3. Encourages without commanding
-4. Uses pastoral, non-judgmental language
-5. Integrates faith and physical wellness naturally
+Generate a FRESH daily devotional that:
+1. Is inspired by the weekly theme but offers a UNIQUE angle for today
+2. Uses the weekly scripture as the verse, but the reflection must feel fresh and specific to this day
+3. Is 2-3 sentences of gentle, encouraging reflection
+4. Connects spiritual truth to physical wellness (nutrition, rest, movement, or self-care)
+5. Uses pastoral, trauma-aware, shame-resistant language
+
+IMPORTANT: The reflection should NOT simply restate the scripture. It should offer a practical, personal insight that helps someone apply the theme to their body and health TODAY.
 
 Return ONLY valid JSON in this exact format:
 {

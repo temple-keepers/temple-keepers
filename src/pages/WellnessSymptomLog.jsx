@@ -6,17 +6,20 @@ import { wellnessService } from '../features/wellness/services/wellnessService'
 import { SymptomLogForm } from '../features/wellness/components/SymptomLogForm'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
+import { useGamification } from '../hooks/useGamification'
 
 export const WellnessSymptomLog = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [saving, setSaving] = useState(false)
+  const { trackAction } = useGamification()
 
   const handleSave = async (symptomData) => {
     if (!user) return
     setSaving(true)
     try {
-      await wellnessService.createSymptomLog(user.id, symptomData)
+      const saved = await wellnessService.createSymptomLog(user.id, symptomData)
+      trackAction('symptom_logged', 'symptom', saved?.id || null)
       toast.success('Symptom logged!')
       navigate('/wellness')
     } catch (error) {
