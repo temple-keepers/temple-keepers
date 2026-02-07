@@ -19,8 +19,8 @@ export const Signup = () => {
     setError('')
     setLoading(true)
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       setLoading(false)
       return
     }
@@ -102,10 +102,10 @@ export const Signup = () => {
               placeholder="••••••••"
               required
               disabled={loading}
-              minLength={6}
+              minLength={8}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              At least 6 characters
+              At least 8 characters — avoid common or easily guessed passwords
             </p>
           </div>
 

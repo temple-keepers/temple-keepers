@@ -9,6 +9,7 @@ import {
   Heart, CheckCircle, Edit2, Save, X, TrendingUp,
   Activity, Target, Flame, UtensilsCrossed, AlertCircle, Camera, Phone, Bell
 } from 'lucide-react'
+import { PinSetup } from '../components/PinSetup'
 import { useNavigate } from 'react-router-dom'
 
 export const Profile = () => {
@@ -727,6 +728,9 @@ export const Profile = () => {
                 </div>
               </div>
             </div>
+
+            {/* PIN Login */}
+            <PinSetup />
 
             {/* Notification Settings Link */}
             <button

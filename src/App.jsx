@@ -8,6 +8,7 @@ import { LoadingSpinner } from './components/LoadingSpinner'
 import { InstallBanner } from './components/InstallBanner'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ConfirmProvider } from './components/ConfirmModal'
+import { PinLockScreen } from './components/PinLockScreen'
 
 // ─── Eager loads (critical path — Landing, Auth, Today) ──────────
 import { Landing } from './pages/Landing'
@@ -64,9 +65,20 @@ const PageLoader = () => (
 
 // ─── Route wrappers ──────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth()
+  const { user, loading, pinLocked, unlockPin, signOut } = useAuth()
   if (loading) return <LoadingSpinner />
   if (!user) return <Navigate to="/login" replace />
+  if (pinLocked) {
+    return (
+      <PinLockScreen
+        onUnlock={unlockPin}
+        onUsePassword={async () => {
+          await signOut()
+          window.location.href = '/login'
+        }}
+      />
+    )
+  }
   return <Suspense fallback={<PageLoader />}>{children}</Suspense>
 }
 
