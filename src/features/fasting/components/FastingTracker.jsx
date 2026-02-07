@@ -129,7 +129,13 @@ export const FastingTracker = ({ userId, enrollmentId, fastingType, fastingWindo
               </h4>
               {fastingType === 'time_window' && fastingWindow && (
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Window: {fastingWindow.replace('-', ' to ')}
+                  Eating window: {fastingWindow.split('-').map(t => {
+                    const [h, m] = t.split(':')
+                    const hour = parseInt(h)
+                    const ampm = hour >= 12 ? 'pm' : 'am'
+                    const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+                    return m === '00' ? `${h12}${ampm}` : `${h12}:${m}${ampm}`
+                  }).join(' – ')}
                 </p>
               )}
             </div>

@@ -16,6 +16,7 @@ export default {
           // Gold accent from logo
           gold: '#D4A574',
           'gold-light': '#E8C49A',
+          'gold-text': '#F0D5B0',
           'gold-dark': '#B8864A',
           // Deep purple for text
           violet: '#6B2D7B',

@@ -7,7 +7,7 @@ import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { 
   Check, Plus, Trash2, ShoppingCart, ChevronDown, ChevronRight,
-  RefreshCw, Package
+  RefreshCw, Package, Info, Warehouse
 } from 'lucide-react'
 
 export const ShoppingList = () => {
@@ -34,7 +34,6 @@ export const ShoppingList = () => {
   const loadOrGenerate = async () => {
     setLoading(true)
 
-    // Try to find existing shopping list for this meal plan
     const { data: lists } = await mealPlanService.getShoppingLists(user.id)
     const existing = lists?.find(l => l.meal_plan_id === planId)
 
@@ -42,7 +41,6 @@ export const ShoppingList = () => {
       setList(existing)
       setItems(existing.items || [])
     } else {
-      // Auto-generate
       await handleRegenerate()
     }
     setLoading(false)
@@ -135,6 +133,8 @@ export const ShoppingList = () => {
   )
 
   const checkedCount = items.filter(i => i.checked).length
+  const pantryCount = items.filter(i => i.inPantry).length
+  const needToBuyCount = items.filter(i => !i.inPantry && !i.checked).length
   const totalCount = items.length
   const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0
 
@@ -152,12 +152,29 @@ export const ShoppingList = () => {
       <AppHeader title="Shopping List" showBackButton={true} backTo={`/meal-plans/${planId}`} />
 
       <div className="max-w-2xl mx-auto px-4 py-6">
+
+        {/* Intro */}
+        <div className="glass-card p-4 mb-4 border-l-4 border-temple-purple dark:border-temple-gold">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-temple-purple dark:text-temple-gold flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Ingredients from all your recipes have been <strong>combined into bulk amounts</strong>. Tick items off as you shop. 
+              {pantryCount > 0 && (
+                <span className="text-green-600 dark:text-green-400"> {pantryCount} item{pantryCount !== 1 ? 's' : ''} already in your pantry {pantryCount !== 1 ? 'are' : 'is'} pre-checked.</span>
+              )}
+            </p>
+          </div>
+        </div>
+
         {/* Progress Bar */}
         {totalCount > 0 && (
-          <div className="glass-card p-4 mb-6">
+          <div className="glass-card p-4 mb-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {checkedCount} of {totalCount} items
+                {checkedCount} of {totalCount} items checked
+                {needToBuyCount > 0 && (
+                  <span className="text-gray-500 dark:text-gray-400"> · {needToBuyCount} to buy</span>
+                )}
               </span>
               <span className="text-sm font-bold text-temple-purple dark:text-temple-gold">
                 {Math.round(progress)}%
@@ -173,7 +190,7 @@ export const ShoppingList = () => {
         )}
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-2 mb-6">
           <button
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm transition-colors"
@@ -189,12 +206,22 @@ export const ShoppingList = () => {
             <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
             Regenerate
           </button>
+          <button
+            onClick={() => navigate('/pantry')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm transition-colors"
+          >
+            <Warehouse className="w-4 h-4" />
+            My Pantry
+          </button>
         </div>
 
         {/* Add Item Form */}
         {showAddForm && (
           <div className="glass-card p-4 mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Add Item</h4>
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Add a custom item</h4>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Need something that's not in your recipes? Add it here.
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -234,7 +261,7 @@ export const ShoppingList = () => {
               No Items Yet
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Add recipes to your meal plan, then generate a shopping list
+              Add recipes to your meal plan first, then come back to generate your combined shopping list.
             </p>
             <button onClick={() => navigate(`/meal-plans/${planId}`)} className="btn-primary">
               Go to Meal Plan
@@ -298,11 +325,19 @@ export const ShoppingList = () => {
                               {item.amount && <span className="text-temple-purple dark:text-temple-gold">{item.amount} {item.unit} </span>}
                               {item.name}
                             </div>
-                            {item.recipes?.length > 0 && item.recipes[0] !== 'Manual' && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                                For: {item.recipes.join(', ')}
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {item.inPantry && (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                                  <Warehouse className="w-3 h-3" />
+                                  In pantry
+                                </span>
+                              )}
+                              {item.recipes?.length > 0 && item.recipes[0] !== 'Manual' && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                  {item.inPantry ? '· ' : ''}For: {item.recipes.join(', ')}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* Delete */}

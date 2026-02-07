@@ -8,64 +8,99 @@ export const Roadmap = () => {
   const roadmapItems = [
     {
       status: 'live',
-      title: 'Core Platform',
+      title: 'Core Experience',
       items: [
-        'Daily scripture devotionals',
-        'AI-powered program creation',
-        'Grace-based day locking',
-        'Daily check-ins & meal logging',
-        'AI recipe generator (10 cuisines)',
-        'Recipe portion adjustment',
-        'Dark mode',
-        'Mobile responsive'
+        'Daily scripture devotionals with reflection',
+        'Personalised greeting & encouragement on your home screen',
+        'Dark mode & light mode toggle',
+        'Install as an app on your phone (PWA)',
+        'Mobile-friendly design throughout'
+      ]
+    },
+    {
+      status: 'live',
+      title: 'Fasting Programs',
+      items: [
+        '14-day "Make Room for the Lord" guided fasting program',
+        'Choose your fasting type: No-Food, Time-Based Window, or Daniel Fast',
+        'Set your own custom eating window times',
+        'Change your fasting type mid-program with grace',
+        'Daily scripture, prayer, reflection questions & action steps',
+        'Fasting compliance tracker with personal notes',
+        'Lifestyle fast commitments (social media, screen time & more)',
+        'Live Zoom session schedule & links',
+        'Day-by-day progress tracking with completion badges'
+      ]
+    },
+    {
+      status: 'live',
+      title: 'Recipes & Meal Planning',
+      items: [
+        'AI recipe generator across 10 cuisines',
+        'Daniel Fast compliant recipe options',
+        '7-day meal planner with drag-and-drop',
+        'Generate up to 5 recipes at once',
+        'Auto-generated shopping lists with bulk combined ingredients',
+        'Personal pantry tracker — pantry items auto-checked on shopping lists',
+        'Choose which week to plan for',
+        'Save favourite recipes to your collection',
+        'Detailed nutrition info, prep times & servings'
+      ]
+    },
+    {
+      status: 'live',
+      title: 'Wellness Tracking',
+      items: [
+        'Daily wellness check-in (energy, sleep, mood, stress)',
+        'Meal logging with hunger & satisfaction ratings',
+        'Symptom tracker with severity & notes',
+        'Recent activity timeline on your profile',
+        'Progress stats & streaks'
+      ]
+    },
+    {
+      status: 'live',
+      title: 'Community & Accountability',
+      items: [
+        'Community pods (small accountability groups)',
+        'Discussion, prayer request, testimony & encouragement posts',
+        'Prayer reactions (praying, amen, love)',
+        'Anonymous posting option for sensitive requests'
+      ]
+    },
+    {
+      status: 'live',
+      title: 'Notifications & Reminders',
+      items: [
+        'In-app notification bell with unread count',
+        'Push notifications for reminders (browser & mobile)',
+        'Morning devotional reminder at your chosen time',
+        'Fasting window open/close alerts',
+        'Live session reminders',
+        'Customisable notification preferences'
       ]
     },
     {
       status: 'in-progress',
-      title: 'Q1 2026 - Community & Engagement',
+      title: 'Coming Soon',
       items: [
-        'My Favorites page',
-        'Shopping list generator',
-        'Print recipe feature',
-        'Email notifications',
-        'Recent activity dashboard',
-        'Progress insights'
+        'Achievement badges & milestone celebrations',
+        'Weekly wellness insights & trends',
+        'Email digest with your weekly summary',
+        'Recipe ratings & reviews from the community',
+        'Share your progress with friends'
       ]
     },
     {
       status: 'planned',
-      title: 'Q2 2026 - Advanced Features',
+      title: 'On the Horizon',
       items: [
-        '7-day AI meal planner',
-        'Community pods (small groups)',
-        'Achievement badges',
-        'Share progress to social',
-        'Recipe collections',
-        'Cooking timer mode'
-      ]
-    },
-    {
-      status: 'planned',
-      title: 'Q3 2026 - Mobile & Premium',
-      items: [
-        'Progressive Web App (PWA)',
-        'Premium membership tiers',
-        'Camera meal logging',
-        'Voice commands',
-        'Offline mode',
-        'Push notifications'
-      ]
-    },
-    {
-      status: 'future',
-      title: 'Q4 2026 & Beyond',
-      items: [
-        'Coaching marketplace',
-        'Church/group licenses',
-        'Recipe ratings & reviews',
-        'Weekly challenges',
-        'Multi-language support',
-        'Custom program builder'
+        'More guided programs (21-day journeys, seasonal fasts)',
+        'Group challenges within pods',
+        'Coaching & personalised guidance',
+        'Church & group licences',
+        'Recipe collections & themed meal plans',
+        'Multi-language support'
       ]
     }
   ]
@@ -115,8 +150,8 @@ export const Roadmap = () => {
             Product Roadmap
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl">
-            See what we're building for you. Our mission is to create the most grace-filled, 
-            faith-integrated wellness platform for Christians.
+            See what's live and what's coming next. We're building the most grace-filled, 
+            faith-integrated wellness platform for Christians — and your feedback shapes what comes next.
           </p>
         </div>
       </div>

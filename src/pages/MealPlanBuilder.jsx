@@ -8,7 +8,7 @@ import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { 
   Plus, X, Sparkles, ShoppingCart, GripVertical, Search,
-  Coffee, Sandwich, UtensilsCrossed, Apple, Clock, Trash2
+  Coffee, Sandwich, UtensilsCrossed, Apple, Clock, Trash2, Warehouse, Info
 } from 'lucide-react'
 
 const DAYS = mealPlanService.DAYS
@@ -28,6 +28,34 @@ const MEAL_COLORS = {
   snack: 'bg-pink-100 dark:bg-pink-900/20 text-pink-700 dark:text-pink-400',
 }
 
+// Reusable recipe item for the picker modal
+const RecipePickerItem = ({ recipe, onSelect }) => (
+  <button
+    onClick={() => onSelect(recipe.id)}
+    className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-left transition-colors"
+  >
+    <div className="font-medium text-gray-900 dark:text-white text-sm">
+      {recipe.title}
+    </div>
+    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+      {recipe.total_time && (
+        <span className="flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          {recipe.total_time} min
+        </span>
+      )}
+      {recipe.meal_type && (
+        <span className="capitalize">{recipe.meal_type}</span>
+      )}
+      {recipe.dietary_tags?.slice(0, 2).map(tag => (
+        <span key={tag} className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 capitalize">
+          {tag}
+        </span>
+      ))}
+    </div>
+  </button>
+)
+
 export const MealPlanBuilder = () => {
   const { id: planId } = useParams()
   const navigate = useNavigate()
@@ -44,6 +72,10 @@ export const MealPlanBuilder = () => {
   const [recipes, setRecipes] = useState([])
   const [recipeSearch, setRecipeSearch] = useState('')
   const [recipesLoading, setRecipesLoading] = useState(false)
+
+  // Custom meal input (replaces browser prompt)
+  const [showCustomMealInput, setShowCustomMealInput] = useState(false)
+  const [customMealName, setCustomMealName] = useState('')
 
   // Drag and drop
   const dragItem = useRef(null)
@@ -81,6 +113,8 @@ export const MealPlanBuilder = () => {
     setPickerDay(dayOfWeek)
     setPickerMealType(mealType)
     setRecipeSearch('')
+    setShowCustomMealInput(false)
+    setCustomMealName('')
     setShowPicker(true)
     if (recipes.length === 0) loadRecipes()
   }
@@ -173,11 +207,13 @@ export const MealPlanBuilder = () => {
     )
   }
 
-  const filteredRecipes = recipes.filter(r => {
-    const matchSearch = !recipeSearch || r.title.toLowerCase().includes(recipeSearch.toLowerCase())
-    const matchType = !pickerMealType || r.meal_type === pickerMealType || !r.meal_type
-    return matchSearch
-  })
+  // Filter by search, then split into matching meal type vs others
+  const searchFiltered = recipes.filter(r => 
+    !recipeSearch || r.title.toLowerCase().includes(recipeSearch.toLowerCase())
+  )
+  const matchingType = searchFiltered.filter(r => r.meal_type === pickerMealType)
+  const otherRecipes = searchFiltered.filter(r => r.meal_type && r.meal_type !== pickerMealType)
+  const untagged = searchFiltered.filter(r => !r.meal_type)
 
   if (loading) {
     return (
@@ -193,22 +229,39 @@ export const MealPlanBuilder = () => {
       <AppHeader title={plan?.title || 'Meal Plan'} showBackButton={true} backTo="/meal-plans" />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* How it works */}
+        <div className="glass-card p-4 mb-4 border-l-4 border-temple-purple dark:border-temple-gold">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-temple-purple dark:text-temple-gold flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              <strong>Build your weekly menu</strong> by tapping the <strong>+</strong> on any meal slot to add a recipe, or use <strong>Auto-Generate</strong> to fill the whole week. When you're ready, hit <strong>Shopping List</strong> to get a combined ingredients list — items in your pantry will be pre-checked.
+            </p>
+          </div>
+        </div>
+
         {/* Actions Bar */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-2 mb-6">
           <button
             onClick={handleAutoGenerate}
             disabled={generating}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 text-white font-medium hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 text-white font-medium hover:shadow-lg transition-all text-sm"
           >
             <Sparkles className="w-4 h-4" />
             {generating ? 'Generating...' : 'Auto-Generate'}
           </button>
           <button
             onClick={handleGenerateShoppingList}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors text-sm"
           >
             <ShoppingCart className="w-4 h-4" />
             Shopping List
+          </button>
+          <button
+            onClick={() => navigate('/pantry')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors text-sm"
+          >
+            <Warehouse className="w-4 h-4" />
+            My Pantry
           </button>
         </div>
 
@@ -322,53 +375,112 @@ export const MealPlanBuilder = () => {
           {/* Recipe List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {/* Custom meal option */}
-            <button
-              onClick={() => {
-                const name = prompt('Enter meal name:')
-                if (name) handleAddCustomMeal(name)
-              }}
-              className="w-full p-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-temple-purple dark:hover:border-temple-gold hover:text-temple-purple dark:hover:text-temple-gold transition-colors text-left text-sm"
-            >
-              <Plus className="w-4 h-4 inline mr-2" />
-              Add custom meal (not from recipes)
-            </button>
+            {showCustomMealInput ? (
+              <div className="p-3 rounded-lg border-2 border-temple-purple dark:border-temple-gold bg-purple-50 dark:bg-purple-900/10">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Enter a meal name</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customMealName}
+                    onChange={(e) => setCustomMealName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customMealName.trim()) {
+                        handleAddCustomMeal(customMealName)
+                        setCustomMealName('')
+                        setShowCustomMealInput(false)
+                      }
+                      if (e.key === 'Escape') {
+                        setShowCustomMealInput(false)
+                        setCustomMealName('')
+                      }
+                    }}
+                    placeholder="e.g. Smoothie bowl, Leftovers..."
+                    className="form-input flex-1 text-sm"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      if (customMealName.trim()) {
+                        handleAddCustomMeal(customMealName)
+                        setCustomMealName('')
+                        setShowCustomMealInput(false)
+                      }
+                    }}
+                    disabled={!customMealName.trim()}
+                    className="btn-primary px-4 text-sm disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => { setShowCustomMealInput(false); setCustomMealName('') }}
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCustomMealInput(true)}
+                className="w-full p-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-temple-purple dark:hover:border-temple-gold hover:text-temple-purple dark:hover:text-temple-gold transition-colors text-left text-sm"
+              >
+                <Plus className="w-4 h-4 inline mr-2" />
+                Add custom meal (not from recipes)
+              </button>
+            )}
 
             {recipesLoading ? (
               <div className="text-center py-8">
                 <div className="spinner mx-auto"></div>
               </div>
-            ) : filteredRecipes.length === 0 ? (
+            ) : searchFiltered.length === 0 ? (
               <p className="text-center py-8 text-gray-500">
                 No recipes found. Create some recipes first!
               </p>
             ) : (
-              filteredRecipes.map(recipe => (
-                <button
-                  key={recipe.id}
-                  onClick={() => handleAddRecipe(recipe.id)}
-                  className="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 text-left transition-colors"
-                >
-                  <div className="font-medium text-gray-900 dark:text-white text-sm">
-                    {recipe.title}
-                  </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {recipe.total_time && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {recipe.total_time} min
-                      </span>
-                    )}
-                    {recipe.meal_type && (
-                      <span className="capitalize">{recipe.meal_type}</span>
-                    )}
-                    {recipe.dietary_tags?.slice(0, 2).map(tag => (
-                      <span key={tag} className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 capitalize">
-                        {tag}
-                      </span>
+              <>
+                {/* Matching meal type recipes shown first */}
+                {matchingType.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1 pt-2">
+                      {pickerMealType} recipes
+                    </p>
+                    {matchingType.map(recipe => (
+                      <RecipePickerItem key={recipe.id} recipe={recipe} onSelect={handleAddRecipe} />
                     ))}
-                  </div>
-                </button>
-              ))
+                  </>
+                )}
+
+                {/* Untagged recipes */}
+                {untagged.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1 pt-3">
+                      Other recipes
+                    </p>
+                    {untagged.map(recipe => (
+                      <RecipePickerItem key={recipe.id} recipe={recipe} onSelect={handleAddRecipe} />
+                    ))}
+                  </>
+                )}
+
+                {/* Other meal type recipes - shown last */}
+                {otherRecipes.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1 pt-3">
+                      {matchingType.length > 0 ? 'From other meal types' : 'All recipes'}
+                    </p>
+                    {otherRecipes.map(recipe => (
+                      <RecipePickerItem key={recipe.id} recipe={recipe} onSelect={handleAddRecipe} />
+                    ))}
+                  </>
+                )}
+
+                {matchingType.length === 0 && untagged.length === 0 && otherRecipes.length === 0 && (
+                  <p className="text-center py-8 text-gray-500">
+                    No matching recipes found.
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>

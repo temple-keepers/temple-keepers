@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { UserPlus } from 'lucide-react'
+import { ghlService } from '../services/ghlService'
 
 export const Signup = () => {
   const [firstName, setFirstName] = useState('')
@@ -11,6 +12,7 @@ export const Signup = () => {
   const [loading, setLoading] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -29,7 +31,12 @@ export const Signup = () => {
       setError(error.message)
       setLoading(false)
     } else {
-      navigate('/today')
+      // Track signup in GHL (non-blocking)
+      ghlService.userSignup({ email, firstName })
+
+      const searchParams = new URLSearchParams(location.search)
+      const redirect = searchParams.get('redirect')
+      navigate(redirect || '/today')
     }
   }
 

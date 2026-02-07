@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
-import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice, BookOpen } from 'lucide-react'
+import { Plus, Search, Clock, Users, Sparkles, UtensilsCrossed, ChefHat, Coffee, Sandwich, Apple, Cookie, CakeSlice, BookOpen, CalendarDays, Warehouse } from 'lucide-react'
 import { BottomNav } from '../components/BottomNav'
 
 export const Recipes = () => {
@@ -69,18 +69,34 @@ export const Recipes = () => {
       <AppHeader title="Recipes" />
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-gray-600 dark:text-gray-400">
-            Faith-inspired, nourishing meals for body and soul
-          </p>
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-4">
+          Faith-inspired, nourishing meals for body and soul
+        </p>
+        <div className="flex flex-wrap items-center gap-2 mb-6">
           <button
             onClick={() => navigate('/recipes/generate')}
             className="btn-primary flex items-center gap-2"
           >
             <Sparkles className="w-5 h-5" />
-            <span className="hidden sm:inline">Generate Recipe</span>
+            <span className="hidden sm:inline">Generate Recipes</span>
             <span className="sm:hidden">Generate</span>
+          </button>
+          <button
+            onClick={() => navigate('/meal-plans')}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <CalendarDays className="w-5 h-5" />
+            <span className="hidden sm:inline">Meal Planner</span>
+            <span className="sm:hidden">Planner</span>
+          </button>
+          <button
+            onClick={() => navigate('/pantry')}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Warehouse className="w-5 h-5" />
+            <span className="hidden sm:inline">My Pantry</span>
+            <span className="sm:hidden">Pantry</span>
           </button>
         </div>
 

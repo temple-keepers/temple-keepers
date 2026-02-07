@@ -11,11 +11,13 @@ import {
   Reply, MoreVertical, Crown, LogOut, Lock, Globe, HandHeart,
   X, Plus, Calendar, ChevronDown, ChevronUp
 } from 'lucide-react'
+import { useConfirm } from '../components/ConfirmModal'
 
 export const PodDetail = () => {
   const { id: podId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const confirm = useConfirm()
 
   const [pod, setPod] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -145,7 +147,14 @@ export const PodDetail = () => {
   }
 
   const handleLeave = async () => {
-    if (!confirm('Leave this pod?')) return
+    const yes = await confirm({
+      title: 'Leave Pod',
+      message: 'Are you sure you want to leave this pod? You can rejoin later.',
+      confirmLabel: 'Leave',
+      variant: 'info',
+      icon: LogOut,
+    })
+    if (!yes) return
     const { error } = await podService.leavePod(podId, user.id)
     if (!error) {
       toast.success('Left the pod')

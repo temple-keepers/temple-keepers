@@ -91,12 +91,39 @@
         }, 500);
       });
 
-      // Register service worker
+      // Register service worker with update detection
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then((reg) => {
               console.log('SW registered:', reg.scope);
+
+              // If a new SW is already waiting (e.g. user reopened the app)
+              if (reg.waiting) {
+                window.dispatchEvent(new CustomEvent('sw-update-available', { detail: reg }));
+              }
+
+              // Detect when a new SW finishes installing and enters waiting
+              reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+                if (!newWorker) return;
+
+                newWorker.addEventListener('statechange', () => {
+                  // New SW is installed and waiting to activate
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.dispatchEvent(new CustomEvent('sw-update-available', { detail: reg }));
+                  }
+                });
+              });
+
+              // When the new SW takes over, refresh the page to load new assets
+              let refreshing = false;
+              navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                  refreshing = true;
+                  window.location.reload();
+                }
+              });
             })
             .catch((err) => {
               console.log('SW registration failed:', err);

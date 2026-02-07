@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Heart, Users, Sparkles, Calendar, ChefHat, Check, ArrowRight, Menu, X } from 'lucide-react'
+import { BookOpen, Heart, Users, Sparkles, Calendar, ChefHat, ArrowRight, Menu, X } from 'lucide-react'
 
 export const Landing = () => {
   const navigate = useNavigate()
@@ -40,52 +40,6 @@ export const Landing = () => {
     }
   ]
 
-  const pricingTiers = [
-    {
-      name: "Free",
-      price: "£0",
-      period: "forever",
-      features: [
-        "Daily devotionals",
-        "Basic check-ins",
-        "5 AI recipes/month",
-        "1 active program",
-        "Mobile responsive"
-      ],
-      cta: "Start Free",
-      highlighted: false
-    },
-    {
-      name: "Premium",
-      price: "£9.99",
-      period: "per month",
-      features: [
-        "Everything in Free",
-        "Unlimited AI recipes",
-        "Unlimited programs",
-        "Meal planning",
-        "Priority support",
-        "Ad-free experience"
-      ],
-      cta: "Start Premium Trial",
-      highlighted: true
-    },
-    {
-      name: "Church",
-      price: "£299",
-      period: "per month",
-      features: [
-        "Everything in Premium",
-        "Up to 100 members",
-        "Custom branding",
-        "Admin dashboard",
-        "Group management",
-        "Usage analytics"
-      ],
-      cta: "Contact Us",
-      highlighted: false
-    }
-  ]
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -274,74 +228,6 @@ export const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-24 bg-gray-50 dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-display font-bold text-gray-900 dark:text-white mb-4">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Start free, upgrade when you're ready
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricingTiers.map((tier, index) => (
-              <div
-                key={index}
-                className={`glass-card p-8 ${
-                  tier.highlighted
-                    ? 'ring-2 ring-temple-purple dark:ring-temple-gold scale-105'
-                    : ''
-                }`}
-              >
-                {tier.highlighted && (
-                  <div className="text-center mb-4">
-                    <span className="px-3 py-1 rounded-full bg-temple-purple dark:bg-temple-gold text-white text-xs font-semibold">
-                      MOST POPULAR
-                    </span>
-                  </div>
-                )}
-                
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  {tier.name}
-                </h3>
-                
-                <div className="mb-6">
-                  <span className="text-4xl font-bold text-temple-purple dark:text-temple-gold">
-                    {tier.price}
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400">
-                    /{tier.period}
-                  </span>
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {tier.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-600 dark:text-gray-400">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  onClick={() => navigate('/signup')}
-                  className={
-                    tier.highlighted
-                      ? 'btn-primary w-full'
-                      : 'btn-secondary w-full'
-                  }
-                >
-                  {tier.cta}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Testimonials Coming Soon */}
       <section className="py-24">
         <div className="max-w-4xl mx-auto px-4 text-center">
@@ -403,7 +289,6 @@ export const Landing = () => {
               <ul className="space-y-2 text-sm text-gray-400">
                 <li><a href="/about" className="hover:text-white">About</a></li>
                 <li><a href="/roadmap" className="hover:text-white">Roadmap</a></li>
-                <li><a href="/pricing" className="hover:text-white">Pricing</a></li>
               </ul>
             </div>
 

@@ -7,11 +7,13 @@ import { FastingTracker } from '../features/fasting/components/FastingTracker'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { ArrowLeft, ArrowRight, Check, BookOpen } from 'lucide-react'
+import { ChangeFastingType } from '../features/fasting/components/ChangeFastingType'
+import { ghlService } from '../services/ghlService'
 
 export const ProgramDay = () => {
   const { slug, dayNumber } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const {
     getEnrollment,
     markDayComplete,
@@ -123,6 +125,15 @@ export const ProgramDay = () => {
     )
 
     if (!error) {
+      // Track day completion in GHL (non-blocking)
+      ghlService.trackDayCompleted(profile, program, parseInt(dayNumber), day.title)
+
+      // Check if this was the last day → program completed
+      const completedCount = (enrollment.completed_days?.length || 0) + 1
+      if (completedCount >= program.duration_days) {
+        ghlService.trackProgramCompleted(profile, program)
+      }
+
       // Reload to show completion
       await loadDayContent()
     } else {
@@ -362,9 +373,24 @@ export const ProgramDay = () => {
               {day.fasting_reminder}
             </p>
             {enrollment?.fasting_type && (
-              <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
-                Your choice: <span className="font-semibold capitalize">{enrollment.fasting_type} Fast</span>
-              </p>
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  Your choice: <span className="font-semibold capitalize">{enrollment.fasting_type.replace('_', '-')} Fast</span>
+                  {enrollment.fasting_type === 'time_window' && enrollment.fasting_window && (
+                    <span className="text-xs ml-1">({enrollment.fasting_window.split('-').map(t => {
+                      const [h, m] = t.split(':')
+                      const hour = parseInt(h)
+                      const ampm = hour >= 12 ? 'pm' : 'am'
+                      const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+                      return m === '00' ? `${h12}${ampm}` : `${h12}:${m}${ampm}`
+                    }).join(' – ')})</span>
+                  )}
+                </p>
+                <ChangeFastingType
+                  enrollment={enrollment}
+                  onChanged={(updated) => setEnrollment(updated)}
+                />
+              </div>
             )}
           </div>
         )}

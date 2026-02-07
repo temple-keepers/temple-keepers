@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { usePrograms } from '../../hooks/usePrograms'
 import { useProgramDays } from '../../hooks/useProgramDays'
 import { ArrowLeft, Save, BookOpen } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export const ProgramBuilder = () => {
   const { id } = useParams()
@@ -63,7 +64,7 @@ export const ProgramBuilder = () => {
 
   const handleSave = async (publish = false) => {
     if (!formData.title || !formData.slug) {
-      alert('Title and slug are required')
+      toast.error('Title and slug are required')
       return
     }
 

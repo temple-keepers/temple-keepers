@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Settings
 } from 'lucide-react'
+import { NotificationBell } from './NotificationBell'
 
 export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) => {
   const navigate = useNavigate()
@@ -85,6 +86,8 @@ export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) 
                   )
                 })}
               </nav>
+
+              <NotificationBell />
 
               <button onClick={toggleTheme} className="p-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Toggle theme">
                 {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -167,6 +170,14 @@ export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) 
                 </button>
               </div>
             )}
+            <div className="px-3 border-t border-gray-200 dark:border-gray-700 pt-3 mt-2">
+              <p className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Settings</p>
+              <button onClick={() => handleNavigation('/notification-settings')} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                <span className="w-5 h-5 flex-shrink-0">🔔</span>
+                <span className="text-base">Notifications</span>
+              </button>
+            </div>
+
             <div className="px-3 pb-4 border-t border-gray-200 dark:border-gray-700 mt-3 pt-3">
               <button onClick={() => { handleSignOut(); setMobileMenuOpen(false); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-medium">
                 <LogOut className="w-5 h-5 flex-shrink-0" />

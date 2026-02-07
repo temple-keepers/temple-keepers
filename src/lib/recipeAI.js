@@ -13,7 +13,7 @@ export const generateRecipe = async ({
   includeScripture = true
 }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const dietaryText = dietaryRestrictions.length > 0
       ? dietaryRestrictions.join(', ')
@@ -49,16 +49,24 @@ Format as JSON with this structure:
   "cookTime": number (minutes),
   "totalTime": number (minutes),
   "servings": number,
-  "difficulty": "Easy|Medium|Hard",
+  "difficulty": "Easy" or "Medium" or "Hard" (use exact casing),
   "cuisine": "cuisine type",
   "dietaryTags": ["tag1", "tag2"],
   "ingredients": [
     {
-      "item": "ingredient name",
-      "amount": "quantity",
-      "unit": "measurement"
+      "item": "ingredient name (JUST the ingredient, no prep instructions like 'diced' or 'cut into cubes')",
+      "amount": number (MUST be a plain number like 2 or 0.5, NEVER text like '2-3' or '1/2' or '3 lbs'),
+      "unit": "measurement (e.g. g, kg, ml, l, tsp, tbsp, cup, lb, oz, piece, clove, can)"
     }
   ],
+
+  CRITICAL INGREDIENT RULES:
+  - "item" must be ONLY the ingredient name. NO prep instructions (chopped, diced, sliced, minced, cut into cubes, etc). NO size descriptions (medium, large). NO weight conversions (about 680g). Put prep details in the recipe instructions instead.
+  - "amount" MUST be a plain number (e.g. 2, 0.5, 250). NEVER a string, NEVER a range like "2-3", NEVER include units in the amount.
+  - "unit" must be a standard unit. Use "piece" for whole items like eggs or onions.
+  - GOOD: {"item": "chicken breast", "amount": 680, "unit": "g"}
+  - BAD:  {"item": "Boneless, skinless chicken breasts, cut into 1-inch cubes", "amount": "3 lbs (about 680g)", "unit": ""}
+
   "instructions": [
     {
       "step": 1,
@@ -114,7 +122,7 @@ export const generateMealPlan = async ({
   preferences = {}
 }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const dietaryText = dietaryRestrictions.length > 0
       ? dietaryRestrictions.join(', ')
@@ -186,7 +194,7 @@ Return ONLY valid JSON.
 
 export const adjustRecipeForDiet = async (recipe, newDietaryRestrictions) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const prompt = `
 Adjust this recipe to meet these dietary restrictions: ${newDietaryRestrictions.join(', ')}

@@ -13,7 +13,7 @@ export const generateRecipe = async ({
   includeScripture = true
 }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const dietaryText = dietaryRestrictions.length > 0
       ? dietaryRestrictions.join(', ')
@@ -114,7 +114,7 @@ export const generateMealPlan = async ({
   preferences = {}
 }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const dietaryText = dietaryRestrictions.length > 0
       ? dietaryRestrictions.join(', ')
@@ -186,7 +186,7 @@ Return ONLY valid JSON.
 
 export const adjustRecipeForDiet = async (recipe, newDietaryRestrictions) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
     const prompt = `
 Adjust this recipe to meet these dietary restrictions: ${newDietaryRestrictions.join(', ')}

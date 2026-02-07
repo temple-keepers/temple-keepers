@@ -35,7 +35,8 @@ const FASTING_TYPES = {
 export const FastingTypeSelector = ({ onSelect, onClose, selectedType = null }) => {
   const [selected, setSelected] = useState(selectedType)
   const [showDetails, setShowDetails] = useState(null)
-  const [timeWindow, setTimeWindow] = useState('12:00-20:00') // Default 12pm-8pm
+  const [windowStart, setWindowStart] = useState('12:00')
+  const [windowEnd, setWindowEnd] = useState('20:00')
 
   const lifestyleOptions = [
     { key: 'socialMedia', title: 'Social media' },
@@ -73,7 +74,7 @@ export const FastingTypeSelector = ({ onSelect, onClose, selectedType = null }) 
 
     const result = {
       fasting_type: selected,
-      fasting_window: selected === 'time_window' ? timeWindow : null,
+      fasting_window: selected === 'time_window' ? `${windowStart}-${windowEnd}` : null,
       lifestyle_commitments: { ...lifestyleCommitments }
     }
 
@@ -183,23 +184,44 @@ export const FastingTypeSelector = ({ onSelect, onClose, selectedType = null }) 
 
                   {/* Time Window Picker (for time_window type) */}
                   {isSelected && key === 'time_window' && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Your Eating Window
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" onClick={(e) => e.stopPropagation()}>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Set Your Eating Window
                       </label>
-                      <select
-                        value={timeWindow}
-                        onChange={(e) => setTimeWindow(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      >
-                        <option value="08:00-16:00">8am - 4pm (8 hours)</option>
-                        <option value="10:00-18:00">10am - 6pm (8 hours)</option>
-                        <option value="12:00-20:00">12pm - 8pm (8 hours)</option>
-                        <option value="08:00-18:00">8am - 6pm (10 hours)</option>
-                        <option value="10:00-20:00">10am - 8pm (10 hours)</option>
-                        <option value="08:00-20:00">8am - 8pm (12 hours)</option>
-                      </select>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Start eating</label>
+                          <input
+                            type="time"
+                            value={windowStart}
+                            onChange={(e) => setWindowStart(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center"
+                          />
+                        </div>
+                        <span className="text-gray-400 dark:text-gray-500 font-medium pt-5">to</span>
+                        <div className="flex-1">
+                          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Stop eating</label>
+                          <input
+                            type="time"
+                            value={windowEnd}
+                            onChange={(e) => setWindowEnd(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-center"
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        const [sh, sm] = windowStart.split(':').map(Number)
+                        const [eh, em] = windowEnd.split(':').map(Number)
+                        const hours = eh - sh + (em - sm) / 60
+                        if (hours > 0 && hours <= 24) {
+                          return (
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                              {hours === Math.floor(hours) ? hours : hours.toFixed(1)}-hour eating window · Fasting {24 - hours === Math.floor(24 - hours) ? 24 - hours : (24 - hours).toFixed(1)} hours
+                            </p>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                   )}
                 </button>

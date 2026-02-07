@@ -4,8 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 /**
  * Custom hook to manage today's daily log and its entries
- * Handles lazy creation of daily log (only created when first needed)
- * Returns log ID, entries, and helper functions
+ * Optimized: single RPC call that returns both log ID and entries
  */
 export const useTodayLog = () => {
   const { user } = useAuth()
@@ -22,23 +21,31 @@ export const useTodayLog = () => {
   }, [user?.id])
 
   /**
-   * Get or create today's log using the database function
+   * Get or create today's log, then load entries in parallel
    */
   const loadTodayLog = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Call the database function to get or create today's log
-      const { data, error: rpcError } = await supabase
+      // Step 1: Get or create log ID
+      const { data: logData, error: rpcError } = await supabase
         .rpc('get_or_create_today_log', { p_user_id: user.id })
 
       if (rpcError) throw rpcError
 
-      setLogId(data)
-      
-      // Load entries for this log
-      await loadEntries(data)
+      setLogId(logData)
+
+      // Step 2: Load entries (now that we have the log ID)
+      const { data: entriesData, error: entriesError } = await supabase
+        .from('daily_log_entries')
+        .select('*')
+        .eq('log_id', logData)
+        .order('created_at', { ascending: true })
+
+      if (entriesError) throw entriesError
+
+      setEntries(entriesData || [])
     } catch (err) {
       console.error('Error loading today log:', err)
       setError(err.message)
@@ -48,41 +55,23 @@ export const useTodayLog = () => {
   }
 
   /**
-   * Load all entries for a given log
-   */
-  const loadEntries = async (id) => {
-    try {
-      const { data, error: entriesError } = await supabase
-        .from('daily_log_entries')
-        .select('*')
-        .eq('log_id', id)
-        .order('created_at', { ascending: true })
-
-      if (entriesError) throw entriesError
-
-      setEntries(data || [])
-    } catch (err) {
-      console.error('Error loading entries:', err)
-      setError(err.message)
-    }
-  }
-
-  /**
    * Add a new entry to today's log
-   * @param {string} type - Entry type: 'mood', 'note', 'meal', 'devotional'
-   * @param {object} data - Entry data (flexible JSONB)
    */
   const addEntry = async (type, data) => {
     try {
-      // Ensure we have a log ID
-      if (!logId) {
-        await loadTodayLog()
+      let currentLogId = logId
+      if (!currentLogId) {
+        const { data: newLogId, error: rpcError } = await supabase
+          .rpc('get_or_create_today_log', { p_user_id: user.id })
+        if (rpcError) throw rpcError
+        currentLogId = newLogId
+        setLogId(currentLogId)
       }
 
       const { data: newEntry, error: insertError } = await supabase
         .from('daily_log_entries')
         .insert({
-          log_id: logId,
+          log_id: currentLogId,
           entry_type: type,
           entry_data: data
         })
@@ -91,9 +80,7 @@ export const useTodayLog = () => {
 
       if (insertError) throw insertError
 
-      // Add to local state
       setEntries(prev => [...prev, newEntry])
-      
       return { data: newEntry, error: null }
     } catch (err) {
       console.error('Error adding entry:', err)
@@ -103,7 +90,6 @@ export const useTodayLog = () => {
 
   /**
    * Get entries by type
-   * @param {string} type - Entry type to filter by
    */
   const getEntriesByType = (type) => {
     return entries.filter(entry => entry.entry_type === type)

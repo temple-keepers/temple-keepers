@@ -7,11 +7,13 @@ import toast from 'react-hot-toast'
 import { 
   User, Mail, Calendar, Award, BookOpen, ChefHat, 
   Heart, CheckCircle, Edit2, Save, X, TrendingUp,
-  Activity, Target, Flame, UtensilsCrossed, AlertCircle, Camera, Phone
+  Activity, Target, Flame, UtensilsCrossed, AlertCircle, Camera, Phone, Bell
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export const Profile = () => {
   const { user, profile } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     programsEnrolled: 0,
     programsCompleted: 0,
@@ -725,6 +727,21 @@ export const Profile = () => {
                 </div>
               </div>
             </div>
+
+            {/* Notification Settings Link */}
+            <button
+              onClick={() => navigate('/notification-settings')}
+              className="w-full glass-card p-5 flex items-center gap-4 hover:border-temple-purple dark:hover:border-temple-gold transition-colors text-left"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-center flex-shrink-0">
+                <Bell className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Notification Settings</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Manage reminders, push notifications & alerts</p>
+              </div>
+              <span className="text-gray-400 dark:text-gray-500 text-xl">›</span>
+            </button>
 
             {/* Achievements Preview */}
             <div className="glass-card p-6">

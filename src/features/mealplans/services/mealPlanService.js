@@ -57,6 +57,127 @@ function categorizeIngredient(itemName) {
   return 'Other'
 }
 
+// ─── Ingredient normalisation for bulk combining ─────────────────
+
+// Normalise ingredient names so "sea salt" and "salt" combine
+function normaliseIngredientName(raw) {
+  let name = (raw || '').toLowerCase().trim()
+  // Strip common adjectives that don't change the shopping item
+  const stripPrefixes = [
+    'fresh ', 'dried ', 'ground ', 'chopped ', 'minced ', 'diced ', 'sliced ',
+    'crushed ', 'large ', 'small ', 'medium ', 'extra-virgin ', 'extra virgin ',
+    'organic ', 'raw ', 'cooked ', 'frozen ', 'canned ', 'whole ', 'finely ',
+    'thinly ', 'roughly ', 'freshly ', 'boneless ', 'skinless ', 'unsalted ',
+    'salted ', 'light ', 'dark ', 'plain ', 'natural ', 'pure ', 'cold-pressed ',
+    'roasted ', 'toasted ', 'blanched ', 'peeled ', 'deseeded ', 'pitted ',
+    'ripe ', 'firm ', 'soft ', 'thick ', 'thin '
+  ]
+  for (const s of stripPrefixes) {
+    if (name.startsWith(s)) {
+      name = name.slice(s.length)
+    }
+  }
+  // Strip colour/type prefixes for common items
+  name = name.replace(/^(red|green|yellow|white|black|brown|sweet|hot|mild|baby|mini|jumbo) /, '')
+  // Simple plural → singular
+  if (name.endsWith('ies') && name.length > 4) name = name.slice(0, -3) + 'y'
+  else if (name.endsWith('ves') && name.length > 4) name = name.slice(0, -3) + 'f'
+  else if (name.endsWith('oes')) name = name.slice(0, -2)  // tomatoes → tomato, potatoes → potato
+  else if (name.endsWith('es') && !name.endsWith('ches') && !name.endsWith('shes') && !name.endsWith('sses') && name.length > 4) name = name.slice(0, -1)
+  else if (name.endsWith('s') && !name.endsWith('ss') && !name.endsWith('us') && name.length > 3) name = name.slice(0, -1)
+  return name.trim()
+}
+
+// Normalise unit strings so "tablespoon" and "tbsp" combine
+function normaliseUnit(raw) {
+  const unit = (raw || '').toLowerCase().trim()
+  const UNIT_MAP = {
+    'g': 'g', 'gram': 'g', 'grams': 'g',
+    'kg': 'kg', 'kilogram': 'kg', 'kilograms': 'kg',
+    'ml': 'ml', 'milliliter': 'ml', 'millilitre': 'ml', 'milliliters': 'ml', 'millilitres': 'ml',
+    'l': 'l', 'liter': 'l', 'litre': 'l', 'liters': 'l', 'litres': 'l',
+    'tsp': 'tsp', 'teaspoon': 'tsp', 'teaspoons': 'tsp',
+    'tbsp': 'tbsp', 'tablespoon': 'tbsp', 'tablespoons': 'tbsp',
+    'cup': 'cup', 'cups': 'cup',
+    'oz': 'oz', 'ounce': 'oz', 'ounces': 'oz',
+    'lb': 'lb', 'lbs': 'lb', 'pound': 'lb', 'pounds': 'lb',
+    'piece': 'piece', 'pieces': 'piece', 'whole': 'piece', 'pcs': 'piece',
+    'clove': 'clove', 'cloves': 'clove',
+    'pinch': 'pinch', 'pinches': 'pinch',
+    'bunch': 'bunch', 'bunches': 'bunch',
+    'can': 'can', 'cans': 'can', 'tin': 'can', 'tins': 'can',
+    'handful': 'handful', 'handfuls': 'handful',
+    'slice': 'slice', 'slices': 'slice',
+    'sprig': 'sprig', 'sprigs': 'sprig',
+    'stalk': 'stalk', 'stalks': 'stalk',
+    'head': 'head', 'heads': 'head',
+    'dash': 'dash', 'dashes': 'dash',
+  }
+  return UNIT_MAP[unit] || unit
+}
+
+// Convert all units to a base unit within their family so everything combines
+function convertToBaseUnit(amount, unit) {
+  // Weight family → all convert to grams
+  if (unit === 'kg') return { amount: amount * 1000, unit: 'g' }
+  if (unit === 'lb') return { amount: amount * 453.592, unit: 'g' }
+  if (unit === 'oz') return { amount: amount * 28.3495, unit: 'g' }
+
+  // Volume (small) family → all convert to tbsp
+  if (unit === 'tsp') return { amount: amount / 3, unit: 'tbsp' }
+
+  // Volume (large) family → all convert to ml
+  if (unit === 'l') return { amount: amount * 1000, unit: 'ml' }
+  if (unit === 'cup') return { amount: amount * 236.588, unit: 'ml' }
+
+  return { amount, unit }
+}
+
+// Clean messy amount strings from AI (e.g. "3 lbs (about 680g)" → 3)
+function parseAmount(raw) {
+  if (typeof raw === 'number') return raw
+  if (!raw) return 0
+  const str = String(raw).trim()
+  // Handle fractions like "1/2"
+  const fractionMatch = str.match(/^(\d+)?\s*(\d+)\/(\d+)/)
+  if (fractionMatch) {
+    const whole = fractionMatch[1] ? parseInt(fractionMatch[1]) : 0
+    return whole + parseInt(fractionMatch[2]) / parseInt(fractionMatch[3])
+  }
+  // Extract first number from messy strings like "3 lbs (about 680g)"
+  const numMatch = str.match(/([\d.]+)/)
+  return numMatch ? parseFloat(numMatch[1]) : 0
+}
+
+// Extract unit from messy amount strings when unit field is empty
+function extractUnit(amountStr, unitField) {
+  if (unitField && unitField.trim()) return normaliseUnit(unitField)
+  if (typeof amountStr !== 'string') return ''
+  // Try to find a unit in the amount string
+  const unitMatch = amountStr.match(/\d+\s*(lbs?|oz|g|kg|ml|l|cups?|tbsp|tsp|teaspoons?|tablespoons?|cloves?|cans?|pieces?|bunch|handfuls?)\b/i)
+  if (unitMatch) return normaliseUnit(unitMatch[1])
+  return ''
+}
+
+// After combining, display in the friendliest unit
+function upscaleUnit(amount, unit) {
+  if (unit === 'g') {
+    if (amount >= 1000) return { amount: +(amount / 1000).toFixed(2), unit: 'kg' }
+    return { amount: +amount.toFixed(0), unit: 'g' }  // whole grams, no decimals
+  }
+  if (unit === 'ml') {
+    if (amount >= 1000) return { amount: +(amount / 1000).toFixed(2), unit: 'l' }
+    return { amount: +amount.toFixed(0), unit: 'ml' }
+  }
+  if (unit === 'tbsp') {
+    if (amount >= 16) return { amount: +(amount / 16).toFixed(1), unit: 'cup' }
+    // Convert back to tsp if less than 1 tbsp
+    if (amount < 1) return { amount: +(amount * 3).toFixed(1), unit: 'tsp' }
+    return { amount: +amount.toFixed(1), unit: 'tbsp' }
+  }
+  return { amount: +amount.toFixed(2), unit }
+}
+
 export const mealPlanService = {
 
   // ─── MEAL PLANS ────────────────────────────────────────
@@ -96,7 +217,9 @@ export const mealPlanService = {
   },
 
   async deleteMealPlan(planId) {
-    // Delete days first due to FK
+    // Shopping lists and meal_plan_days cascade delete automatically via FK
+    // but delete shopping lists explicitly for safety
+    await supabase.from('shopping_lists').delete().eq('meal_plan_id', planId)
     await supabase.from('meal_plan_days').delete().eq('meal_plan_id', planId)
     const { error } = await supabase.from('meal_plans').delete().eq('id', planId)
     return { error }
@@ -257,42 +380,72 @@ export const mealPlanService = {
 
     if (planError || !plan) return { error: planError }
 
-    // Aggregate ingredients
+    // Fetch user's pantry to cross-reference
+    const { data: pantryItems } = await supabase
+      .from('user_pantry')
+      .select('item_name')
+      .eq('user_id', userId)
+
+    const pantrySet = new Set(
+      (pantryItems || []).map(p => normaliseIngredientName(p.item_name))
+    )
+
+    // Aggregate ingredients with improved normalisation
     const ingredientMap = new Map()
 
     for (const day of plan.meal_plan_days || []) {
       if (!day.recipes?.ingredients) continue
 
       for (const ing of day.recipes.ingredients) {
-        const key = `${(ing.item || ing.name || '').toLowerCase().trim()}_${(ing.unit || '').toLowerCase().trim()}`
-        if (!key || key === '_') continue
+        const rawName = ing.item || ing.name || ''
+        if (!rawName.trim()) continue
+
+        const normName = normaliseIngredientName(rawName)
+        const normUnit = extractUnit(ing.amount, ing.unit)
+
+        // Parse messy amounts and convert tsp → tbsp for combining
+        const cleanAmount = parseAmount(ing.amount)
+        const converted = convertToBaseUnit(cleanAmount, normUnit)
+        const key = `${normName}_${converted.unit}`
 
         if (ingredientMap.has(key)) {
           const existing = ingredientMap.get(key)
-          existing.amount = (parseFloat(existing.amount) || 0) + (parseFloat(ing.amount) || 0)
+          existing.amount += converted.amount
           existing.recipes.add(day.recipes.title)
         } else {
           ingredientMap.set(key, {
-            name: ing.item || ing.name || '',
-            amount: parseFloat(ing.amount) || 0,
-            unit: ing.unit || '',
-            category: categorizeIngredient(ing.item || ing.name || ''),
+            name: normName.charAt(0).toUpperCase() + normName.slice(1),  // Clean, capitalised display name
+            normName,                       // Normalised for pantry matching
+            amount: converted.amount,
+            unit: converted.unit,
+            category: categorizeIngredient(rawName),
             checked: false,
             recipes: new Set([day.recipes.title]),
+            inPantry: pantrySet.has(normName),
           })
         }
       }
     }
 
-    // Convert to array and serialize
-    const items = Array.from(ingredientMap.values()).map(item => ({
-      ...item,
-      amount: item.amount > 0 ? Number(item.amount.toFixed(2)) : null,
-      recipes: Array.from(item.recipes),
-    }))
+    // Convert to array, upscale large units, and serialize
+    const items = Array.from(ingredientMap.values()).map(item => {
+      const scaled = item.amount > 0 ? upscaleUnit(item.amount, item.unit) : { amount: null, unit: item.unit }
+      return {
+        name: item.name,
+        amount: scaled.amount,
+        unit: scaled.unit,
+        category: item.category,
+        checked: item.inPantry ? true : false,   // Auto-check items user already has
+        inPantry: item.inPantry,
+        recipes: Array.from(item.recipes),
+      }
+    })
 
-    // Sort by category then name
-    items.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
+    // Sort: pantry items last, then by category, then name
+    items.sort((a, b) => {
+      if (a.inPantry !== b.inPantry) return a.inPantry ? 1 : -1
+      return a.category.localeCompare(b.category) || a.name.localeCompare(b.name)
+    })
 
     // Upsert shopping list
     const { data: existing } = await supabase
@@ -379,8 +532,70 @@ export const mealPlanService = {
     return { error }
   },
 
+  // ─── PANTRY ─────────────────────────────────────────
+
+  async getPantry(userId) {
+    const { data, error } = await supabase
+      .from('user_pantry')
+      .select('*')
+      .eq('user_id', userId)
+      .order('category', { ascending: true })
+      .order('item_name', { ascending: true })
+
+    return { data, error }
+  },
+
+  async addToPantry(userId, itemName, category) {
+    const cat = category || categorizeIngredient(itemName)
+    const { data, error } = await supabase
+      .from('user_pantry')
+      .upsert({
+        user_id: userId,
+        item_name: itemName.trim(),
+        category: cat,
+      }, { onConflict: 'user_id,item_name' })
+      .select()
+      .single()
+
+    return { data, error }
+  },
+
+  async addManyToPantry(userId, items) {
+    const rows = items.map(item => ({
+      user_id: userId,
+      item_name: (typeof item === 'string' ? item : item.name).trim(),
+      category: (typeof item === 'string' ? categorizeIngredient(item) : item.category) || 'Other',
+    }))
+
+    const { data, error } = await supabase
+      .from('user_pantry')
+      .upsert(rows, { onConflict: 'user_id,item_name' })
+      .select()
+
+    return { data, error }
+  },
+
+  async removeFromPantry(pantryId) {
+    const { error } = await supabase
+      .from('user_pantry')
+      .delete()
+      .eq('id', pantryId)
+
+    return { error }
+  },
+
+  async clearPantry(userId) {
+    const { error } = await supabase
+      .from('user_pantry')
+      .delete()
+      .eq('user_id', userId)
+
+    return { error }
+  },
+
   // Helpers
   DAYS,
   MEAL_TYPES,
   categorizeIngredient,
+  normaliseIngredientName,
 }

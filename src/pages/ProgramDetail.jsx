@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { useEnrollment } from '../hooks/useEnrollment'
 import { StartDateModal } from '../components/StartDateModal'
 import { FastingTypeSelector } from '../features/fasting/components/FastingTypeSelector'
@@ -9,10 +10,13 @@ import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Calendar, Clock, BookOpen, Check } from 'lucide-react'
+import { ghlService } from '../services/ghlService'
 
 export const ProgramDetail = () => {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { user, profile } = useAuth()
   const { getEnrollment, enrollInProgram } = useEnrollment()
   
   const [program, setProgram] = useState(null)
@@ -30,6 +34,16 @@ export const ProgramDetail = () => {
   useEffect(() => {
     loadProgram()
   }, [slug])
+
+  useEffect(() => {
+    // Check if returned from signup with intent to enroll
+    const searchParams = new URLSearchParams(location.search)
+    if (user && program && !enrollment && searchParams.get('action') === 'enroll') {
+      handleEnroll()
+      // Clear the param so it doesn't trigger again continuously if they cancel
+      navigate(location.pathname, { replace: true })
+    }
+  }, [user, program, enrollment, location.search])
 
   const loadProgram = async () => {
     setLoading(true)
@@ -60,10 +74,12 @@ export const ProgramDetail = () => {
       setDays(daysData)
     }
     
-    // Check enrollment
-    const { data: enrollmentData } = await getEnrollment(programData.id)
-    if (enrollmentData) {
-      setEnrollment(enrollmentData)
+    if (user) {
+      // Check enrollment
+      const { data: enrollmentData } = await getEnrollment(programData.id)
+      if (enrollmentData) {
+        setEnrollment(enrollmentData)
+      }
     }
     
     setLoading(false)
@@ -74,6 +90,12 @@ export const ProgramDetail = () => {
     if (program?.program_type === 'fasting') {
       setShowFastingSelector(true)
     } else {
+    if (!user) {
+      const redirectPath = `${location.pathname}?action=enroll`
+      navigate(`/signup?redirect=${encodeURIComponent(redirectPath)}`)
+      return
+    }
+
       setShowStartDateModal(true)
     }
   }
@@ -108,6 +130,13 @@ export const ProgramDetail = () => {
     const { data, error } = await enrollInProgram(enrollmentData)
     
     if (!error && data) {
+      // Track enrollment in GHL (non-blocking)
+      ghlService.trackProgramEnrollment(
+        profile,
+        program,
+        fastingSelection?.fasting_type
+      )
+
       // Navigate to Day 1
       navigate(`/programs/${program.slug}/day/1`)
     } else {

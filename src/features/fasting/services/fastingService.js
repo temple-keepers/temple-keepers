@@ -13,7 +13,7 @@ export const fastingService = {
     return data
   },
 
-  // Get active cohorts for a program
+  // Get active cohorts for a program (includes upcoming that have reached start_date)
   async getActiveCohorts(programId) {
     const now = new Date().toISOString()
     
@@ -21,6 +21,7 @@ export const fastingService = {
       .from('program_cohorts')
       .select('*')
       .eq('program_id', programId)
+      .in('status', ['active', 'upcoming'])
       .lte('start_date', now)
       .gte('end_date', now)
       .order('start_date', { ascending: false })

@@ -21,6 +21,7 @@ import {
   ListTodo,
   CheckCircle
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export const DayEditor = () => {
   const { programId } = useParams()
@@ -106,7 +107,7 @@ export const DayEditor = () => {
 
   const handleSave = async () => {
     if (!dayData.title) {
-      alert('Day title is required')
+      toast.error('Day title is required')
       return
     }
 
@@ -117,7 +118,7 @@ export const DayEditor = () => {
 
   const handleAIGenerate = async (section) => {
     if (!dayData.title) {
-      alert('Please add a day title first')
+      toast.error('Please add a day title first')
       return
     }
 
@@ -212,7 +213,7 @@ export const DayEditor = () => {
       }
     } catch (error) {
       console.error('AI generation error:', error)
-      alert('Failed to generate content. Please try again.')
+      toast.error('Failed to generate content. Please try again.')
     }
 
     setAiLoading(false)

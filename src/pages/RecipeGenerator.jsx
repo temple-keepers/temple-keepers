@@ -5,7 +5,7 @@ import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { Sparkles, Clock, Users, ChefHat } from 'lucide-react'
+import { Sparkles, Clock, Users, ChefHat, Check, BookOpen, ArrowLeft, ArrowRight, Save } from 'lucide-react'
 
 export const RecipeGenerator = () => {
   const navigate = useNavigate()
@@ -15,13 +15,16 @@ export const RecipeGenerator = () => {
   const [cuisine, setCuisine] = useState('any')
   const [cookingTime, setCookingTime] = useState(30)
   const [servings, setServings] = useState(4)
+  const [recipeCount, setRecipeCount] = useState(1)
   const [dietaryRestrictions, setDietaryRestrictions] = useState([])
   const [includeIngredients, setIncludeIngredients] = useState('')
   const [excludeIngredients, setExcludeIngredients] = useState('')
 
   const [generating, setGenerating] = useState(false)
-  const [generatedRecipe, setGeneratedRecipe] = useState(null)
-  const [saving, setSaving] = useState(false)
+  const [generatedRecipes, setGeneratedRecipes] = useState([])
+  const [activeRecipeIndex, setActiveRecipeIndex] = useState(0)
+  const [savedIndexes, setSavedIndexes] = useState(new Set())
+  const [savingIndex, setSavingIndex] = useState(null)
 
   const dietaryOptions = [
     'daniel-fast',
@@ -57,76 +60,108 @@ export const RecipeGenerator = () => {
 
   const handleGenerate = async () => {
     setGenerating(true)
-    setGeneratedRecipe(null)
+    setGeneratedRecipes([])
+    setSavedIndexes(new Set())
+    setActiveRecipeIndex(0)
 
     const mealTypeLabel = mealTypeOptions.find(option => option.value === mealType)?.label || mealType
+    const results = []
 
-    const { success, recipe, error } = await generateRecipe({
-      mealType: mealTypeLabel.toLowerCase(),
-      dietaryRestrictions,
-      cuisine,
-      cookingTime,
-      servings,
-      includeIngredients: parseIngredientList(includeIngredients),
-      excludeIngredients: parseIngredientList(excludeIngredients)
-    })
+    for (let i = 0; i < recipeCount; i++) {
+      toast.loading(`Generating recipe ${i + 1} of ${recipeCount}...`, { id: 'gen-progress' })
 
-    if (success) {
-      setGeneratedRecipe(recipe)
-    } else {
-      toast.error('Failed to generate recipe: ' + error)
+      const { success, recipe, error } = await generateRecipe({
+        mealType: mealTypeLabel.toLowerCase(),
+        dietaryRestrictions,
+        cuisine,
+        cookingTime,
+        servings,
+        includeIngredients: parseIngredientList(includeIngredients),
+        excludeIngredients: parseIngredientList(excludeIngredients)
+      })
+
+      if (success) {
+        results.push(recipe)
+        setGeneratedRecipes([...results])
+      } else {
+        toast.error(`Recipe ${i + 1} failed: ${error}`)
+      }
+    }
+
+    toast.dismiss('gen-progress')
+
+    if (results.length > 0) {
+      toast.success(`${results.length} recipe${results.length > 1 ? 's' : ''} generated! 🙏`)
     }
 
     setGenerating(false)
   }
 
-  const handleSave = async () => {
-    if (!generatedRecipe) return
+  const handleSave = async (index) => {
+    const recipe = generatedRecipes[index]
+    if (!recipe || savedIndexes.has(index)) return
 
-    setSaving(true)
+    setSavingIndex(index)
+
+    const validMealTypes = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert']
+    let saveMealType = mealType
+    if (!validMealTypes.includes(saveMealType)) saveMealType = 'snack'
+
+    const rawDifficulty = recipe.difficulty || 'Easy'
+    const normalizedDifficulty = rawDifficulty.charAt(0).toUpperCase() + rawDifficulty.slice(1).toLowerCase()
+    const validDifficulties = ['Easy', 'Medium', 'Hard']
+    const difficulty = validDifficulties.includes(normalizedDifficulty) ? normalizedDifficulty : 'Easy'
 
     const recipeData = {
-      title: generatedRecipe.title,
-      description: generatedRecipe.description,
-      meal_type: mealType,
-      cuisine: generatedRecipe.cuisine || cuisine,
-      prep_time: generatedRecipe.prepTime,
-      cook_time: generatedRecipe.cookTime,
-      total_time: generatedRecipe.totalTime,
-      servings: generatedRecipe.servings,
-      difficulty: generatedRecipe.difficulty,
-      dietary_tags: generatedRecipe.dietaryTags || [],
-      ingredients: generatedRecipe.ingredients,
-      instructions: generatedRecipe.instructions,
-      nutrition: generatedRecipe.nutrition,
-      scripture: generatedRecipe.scripture || null,
-      tips: generatedRecipe.tips || [],
-      notes: generatedRecipe.notes || ''
+      title: recipe.title,
+      description: recipe.description,
+      meal_type: saveMealType,
+      cuisine: recipe.cuisine || cuisine,
+      prep_time: recipe.prepTime,
+      cook_time: recipe.cookTime,
+      total_time: recipe.totalTime,
+      servings: recipe.servings,
+      difficulty,
+      dietary_tags: recipe.dietaryTags || [],
+      ingredients: recipe.ingredients,
+      instructions: recipe.instructions,
+      nutrition: recipe.nutrition,
+      scripture: recipe.scripture || null,
+      tips: recipe.tips || [],
+      notes: recipe.notes || ''
     }
 
     const { data, error } = await createRecipe(recipeData)
 
     if (!error && data) {
-      // Show success message
-      toast.success('Recipe saved! \uD83D\uDE4F')
-      // Redirect to recipes list to see it
-      navigate('/recipes')
+      setSavedIndexes(prev => new Set([...prev, index]))
+      toast.success(`"${recipe.title}" saved! 🙏`)
     } else {
       console.error('Save error:', error)
-      toast.error(`Failed to save recipe: ${error?.message || 'Unknown error'}`)
+      toast.error(`Failed to save: ${error?.message || 'Unknown error'}`)
     }
 
-    setSaving(false)
+    setSavingIndex(null)
   }
+
+  const handleSaveAll = async () => {
+    for (let i = 0; i < generatedRecipes.length; i++) {
+      if (!savedIndexes.has(i)) {
+        await handleSave(i)
+      }
+    }
+  }
+
+  const activeRecipe = generatedRecipes[activeRecipeIndex]
+  const allSaved = generatedRecipes.length > 0 && savedIndexes.size === generatedRecipes.length
 
   return (
     <>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-24 md:pb-0">
-      {/* Header */}
       <AppHeader title="AI Recipe Generator" showBackButton={true} backTo="/recipes" />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-6">
           Create custom recipes with scripture-based inspiration
         </p>
 
@@ -180,12 +215,12 @@ export const RecipeGenerator = () => {
                 </select>
               </div>
 
-              {/* Time & Servings */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              {/* Time, Servings & Count */}
+              <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    Max Time (min)
+                    Max Time
                   </label>
                   <input
                     type="number"
@@ -210,6 +245,21 @@ export const RecipeGenerator = () => {
                     max="12"
                     className="form-input"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                    <Sparkles className="w-4 h-4" />
+                    Recipes
+                  </label>
+                  <select
+                    value={recipeCount}
+                    onChange={(e) => setRecipeCount(parseInt(e.target.value))}
+                    className="form-input"
+                  >
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -274,12 +324,12 @@ export const RecipeGenerator = () => {
                 {generating ? (
                   <>
                     <div className="spinner w-5 h-5"></div>
-                    <span>Generating Recipe...</span>
+                    <span>Generating {recipeCount > 1 ? `${recipeCount} Recipes` : 'Recipe'}...</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    <span>Generate Recipe</span>
+                    <span>Generate {recipeCount > 1 ? `${recipeCount} Recipes` : 'Recipe'}</span>
                   </>
                 )}
               </button>
@@ -288,116 +338,211 @@ export const RecipeGenerator = () => {
 
           {/* Generated Recipe Preview */}
           <div>
-            {generatedRecipe ? (
-              <div className="glass-card p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {generatedRecipe.title}
-                  </h2>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="btn-primary text-sm"
-                  >
-                    {saving ? 'Saving...' : 'Save Recipe'}
-                  </button>
-                </div>
+            {generatedRecipes.length > 0 && activeRecipe ? (
+              <div className="space-y-4">
+                {/* Recipe Navigation (multi-recipe) */}
+                {generatedRecipes.length > 1 && (
+                  <div className="glass-card p-3">
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setActiveRecipeIndex(Math.max(0, activeRecipeIndex - 1))}
+                        disabled={activeRecipeIndex === 0}
+                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </button>
 
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {generatedRecipe.description}
-                </p>
-
-                {/* Meta Info */}
-                <div className="flex flex-wrap gap-3 mb-6">
-                  <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
-                    <Clock className="w-4 h-4" />
-                    <span>{generatedRecipe.totalTime} min</span>
-                  </div>
-                  <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
-                    <Users className="w-4 h-4" />
-                    <span>{generatedRecipe.servings} servings</span>
-                  </div>
-                  <div className="px-3 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium">
-                    {generatedRecipe.difficulty}
-                  </div>
-                </div>
-
-                {/* Dietary Tags */}
-                {generatedRecipe.dietaryTags && generatedRecipe.dietaryTags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {generatedRecipe.dietaryTags.map(tag => (
-                      <span key={tag} className="px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-400 capitalize">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Scripture */}
-                {generatedRecipe.scripture && (
-                  <div className="p-4 rounded-lg bg-temple-purple/5 dark:bg-temple-gold/5 border-l-4 border-temple-purple dark:border-temple-gold mb-6">
-                    <p className="text-sm italic text-gray-700 dark:text-gray-300 mb-2">
-                      "{generatedRecipe.scripture.text}"
-                    </p>
-                    <p className="text-xs font-semibold text-temple-purple dark:text-temple-gold mb-2">
-                      -- {generatedRecipe.scripture.reference}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {generatedRecipe.scripture.reflection}
-                    </p>
-                  </div>
-                )}
-
-                {/* Ingredients */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                    Ingredients
-                  </h3>
-                  <ul className="space-y-2">
-                    {generatedRecipe.ingredients?.map((ingredient, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <span className="text-temple-purple dark:text-temple-gold">-</span>
-                        <span><strong>{ingredient.amount} {ingredient.unit}</strong> {ingredient.item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Instructions Preview */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                    Instructions
-                  </h3>
-                  <div className="space-y-2">
-                    {generatedRecipe.instructions?.map((instruction, index) => (
-                      <div key={index} className="flex gap-3">
-                        <div className="flex-shrink-0 w-6 h-6 rounded-full bg-temple-purple/20 dark:bg-temple-gold/20 flex items-center justify-center text-xs font-bold text-temple-purple dark:text-temple-gold">
-                          {instruction.step}
-                        </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 pt-0.5">
-                          {instruction.instruction}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        {generatedRecipes.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setActiveRecipeIndex(i)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                              ${i === activeRecipeIndex
+                                ? 'bg-temple-purple dark:bg-temple-gold text-white scale-110'
+                                : savedIndexes.has(i)
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                              }
+                            `}
+                          >
+                            {savedIndexes.has(i) ? <Check className="w-4 h-4" /> : i + 1}
+                          </button>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Tips */}
-                {generatedRecipe.tips && generatedRecipe.tips.length > 0 && (
-                  <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 mb-6">
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                      Chef's Tips
-                    </h4>
-                    <ul className="space-y-1">
-                      {generatedRecipe.tips.map((tip, index) => (
-                        <li key={index} className="text-xs text-gray-700 dark:text-gray-300 flex items-start gap-2">
-                          <span className="text-temple-purple dark:text-temple-gold">-</span>
-                          <span>{tip}</span>
+                      <button
+                        onClick={() => setActiveRecipeIndex(Math.min(generatedRecipes.length - 1, activeRecipeIndex + 1))}
+                        disabled={activeRecipeIndex === generatedRecipes.length - 1}
+                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
+                      >
+                        <ArrowRight className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Save All button */}
+                    {!allSaved && generatedRecipes.length > 1 && (
+                      <button
+                        onClick={handleSaveAll}
+                        disabled={savingIndex !== null}
+                        className="w-full mt-3 py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Save className="w-4 h-4" />
+                        Save All {generatedRecipes.length - savedIndexes.size} Unsaved
+                      </button>
+                    )}
+
+                    {allSaved && (
+                      <div className="mt-3 text-center">
+                        <button
+                          onClick={() => navigate('/recipes')}
+                          className="text-sm text-temple-purple dark:text-temple-gold font-medium hover:underline"
+                        >
+                          All saved! View your recipes →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Recipe Card */}
+                <div className="glass-card p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex-1 mr-3">
+                      {activeRecipe.title}
+                    </h2>
+                    <button
+                      onClick={() => handleSave(activeRecipeIndex)}
+                      disabled={savingIndex === activeRecipeIndex || savedIndexes.has(activeRecipeIndex)}
+                      className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
+                        ${savedIndexes.has(activeRecipeIndex)
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                          : 'bg-temple-purple dark:bg-temple-gold text-white hover:shadow-lg'
+                        }
+                      `}
+                    >
+                      {savedIndexes.has(activeRecipeIndex) ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Saved
+                        </>
+                      ) : savingIndex === activeRecipeIndex ? (
+                        'Saving...'
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Save
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    {activeRecipe.description}
+                  </p>
+
+                  {/* Meta Info */}
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
+                      <Clock className="w-4 h-4" />
+                      <span>{activeRecipe.totalTime} min</span>
+                    </div>
+                    <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
+                      <Users className="w-4 h-4" />
+                      <span>{activeRecipe.servings} servings</span>
+                    </div>
+                    <div className="px-3 py-1 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium">
+                      {activeRecipe.difficulty}
+                    </div>
+                  </div>
+
+                  {/* Dietary Tags */}
+                  {activeRecipe.dietaryTags && activeRecipe.dietaryTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {activeRecipe.dietaryTags.map(tag => (
+                        <span key={tag} className="px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-xs font-medium text-blue-700 dark:text-blue-400 capitalize">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Scripture */}
+                  {activeRecipe.scripture && (
+                    <div className="p-4 rounded-lg bg-temple-purple/5 dark:bg-temple-gold/5 border-l-4 border-temple-purple dark:border-temple-gold mb-6">
+                      <p className="text-sm italic text-gray-700 dark:text-gray-300 mb-2">
+                        "{activeRecipe.scripture.text}"
+                      </p>
+                      <p className="text-xs font-semibold text-temple-purple dark:text-temple-gold mb-2">
+                        — {activeRecipe.scripture.reference}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {activeRecipe.scripture.reflection}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Ingredients */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Ingredients
+                    </h3>
+                    <ul className="space-y-2">
+                      {activeRecipe.ingredients?.map((ingredient, index) => (
+                        <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <span className="text-temple-purple dark:text-temple-gold">•</span>
+                          <span><strong>{ingredient.amount} {ingredient.unit}</strong> {ingredient.item}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                )}
+
+                  {/* Instructions */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                      Instructions
+                    </h3>
+                    <div className="space-y-2">
+                      {activeRecipe.instructions?.map((instruction, index) => (
+                        <div key={index} className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-temple-purple/20 dark:bg-temple-gold/20 flex items-center justify-center text-xs font-bold text-temple-purple dark:text-temple-gold">
+                            {instruction.step}
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 pt-0.5">
+                            {instruction.instruction}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tips */}
+                  {activeRecipe.tips && activeRecipe.tips.length > 0 && (
+                    <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 mb-6">
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Chef's Tips
+                      </h4>
+                      <ul className="space-y-1">
+                        {activeRecipe.tips.map((tip, index) => (
+                          <li key={index} className="text-xs text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                            <span className="text-temple-purple dark:text-temple-gold">•</span>
+                            <span>{tip}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : generating ? (
+              <div className="glass-card p-12 text-center">
+                <div className="spinner w-12 h-12 mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Creating {recipeCount > 1 ? 'Recipes' : 'Recipe'}...
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Our AI chef is preparing something special
+                </p>
               </div>
             ) : (
               <div className="glass-card p-12 text-center">
@@ -406,7 +551,7 @@ export const RecipeGenerator = () => {
                   Ready to Create
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400">
-                  Customize your settings and click Generate to create a faith-inspired recipe
+                  Customise your settings and click Generate to create faith-inspired recipes
                 </p>
               </div>
             )}

@@ -6,7 +6,9 @@ import { useEnrollment } from '../hooks/useEnrollment'
 import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
 import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
-import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users } from 'lucide-react'
+import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users, Sparkles, X } from 'lucide-react'
+import { NotificationBell } from '../components/NotificationBell'
+import { notificationService } from '../services/notificationService'
 import { useNavigate } from 'react-router-dom'
 
 export const Today = () => {
@@ -17,6 +19,7 @@ export const Today = () => {
   const [greeting, setGreeting] = useState('')
   const [timeIcon, setTimeIcon] = useState(Sun)
   const [activePrograms, setActivePrograms] = useState([])
+  const [dismissedBanner, setDismissedBanner] = useState(false)
   const navigate = useNavigate()
 
   // Detect fasting enrollment and get live session
@@ -24,19 +27,36 @@ export const Today = () => {
   const { session: nextSession } = useNextSession(fastingEnrollment?.cohort_id)
   const { cohort } = useCohort(fastingEnrollment?.cohort_id)
 
-  // Load active programs
+  // Load active programs — fire immediately, don't wait for other hooks
   useEffect(() => {
     if (user) {
-      loadActivePrograms()
+      getActiveEnrollments().then(({ data }) => {
+        if (data) setActivePrograms(data)
+      })
     }
   }, [user])
 
-  const loadActivePrograms = async () => {
-    const { data } = await getActiveEnrollments()
-    if (data) {
-      setActivePrograms(data)
+  // Schedule local reminders — defer to not block rendering
+  useEffect(() => {
+    if (!user) return
+    const timers = []
+
+    // Defer reminder scheduling so it doesn't block initial paint
+    const raf = requestAnimationFrame(() => {
+      const devTimer = notificationService.scheduleMorningReminder()
+      if (devTimer) timers.push(devTimer)
+
+      if (fastingEnrollment?.fasting_window) {
+        const fastTimers = notificationService.scheduleFastingReminders(fastingEnrollment.fasting_window)
+        timers.push(...fastTimers)
+      }
+    })
+
+    return () => {
+      cancelAnimationFrame(raf)
+      timers.forEach(t => clearTimeout(t))
     }
-  }
+  }, [user, fastingEnrollment])
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -72,6 +92,18 @@ export const Today = () => {
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
   const encouragement = encouragements[dayOfYear % encouragements.length]
 
+  // Check if user is enrolled in the Make Room program
+  const isEnrolledInMakeRoom = activePrograms.some(
+    e => e.programs?.slug === 'make-room-for-the-lord'
+  )
+
+  // Check if banner was previously dismissed this session
+  const showJoinBanner = !isEnrolledInMakeRoom && !dismissedBanner && activePrograms !== null
+
+  // Show banner until end date of the cohort (Feb 22)
+  const bannerEndDate = new Date('2026-02-22T23:59:59')
+  const showBannerInTime = new Date() <= bannerEndDate
+
   return (
     <>
     <div className="min-h-screen p-4 md:p-8 pb-24 md:pb-8">
@@ -86,7 +118,7 @@ export const Today = () => {
               alt="Temple Keepers"
               className="w-10 h-10 md:w-12 md:h-12 object-contain"
             />
-            <span className="font-display text-xl md:text-2xl font-bold gradient-text hidden sm:inline">
+            <span className="font-display text-xl md:text-2xl font-bold gradient-text hidden sm:inline" style={{ WebkitTextFillColor: 'transparent' }}>
               Temple Keepers
             </span>
           </div>
@@ -142,6 +174,9 @@ export const Today = () => {
               <span>Profile</span>
             </button>
 
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -177,18 +212,70 @@ export const Today = () => {
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 bg-temple-purple/10 dark:bg-temple-gold/10">
               <TimeIcon className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
-              <span className="text-sm font-medium text-temple-purple dark:text-temple-gold">
+              <span className="text-sm font-semibold text-temple-purple dark:text-[#E8C49A]">
                 {greeting}
               </span>
             </div>
             <h1 className="text-3xl md:text-4xl font-display font-bold gradient-text mb-3">
               Welcome back, {firstName}!
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
+            <p className="text-gray-600 dark:text-gray-300 text-lg">
               {encouragement}
             </p>
           </div>
         </div>
+
+        {/* Join the Fast Banner — shows for users not enrolled in Make Room */}
+        {showJoinBanner && showBannerInTime && (
+          <div className="relative animate-fade-in overflow-hidden rounded-2xl bg-gradient-to-br from-temple-purple via-temple-purple-dark to-purple-900 dark:from-[#2a1854] dark:via-[#1e1145] dark:to-[#120b2e] p-6 md:p-8 shadow-xl">
+            {/* Dismiss button */}
+            <button
+              onClick={() => setDismissedBanner(true)}
+              className="absolute top-3 right-3 p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors z-10"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Decorative glow */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-temple-gold/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-400/10 rounded-full blur-3xl" />
+
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm mb-4">
+                <Sparkles className="w-4 h-4 text-temple-gold" />
+                <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">Starts February 9th</span>
+              </div>
+
+              <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-2">
+                Make Room for the Lord
+              </h2>
+              <p className="text-white/80 mb-1 text-sm md:text-base">
+                A 14-day guided fasting journey with daily scripture, prayer, and live community sessions.
+              </p>
+              <p className="text-white/60 text-xs mb-5">
+                Choose your fasting type • Daily devotionals • Live Zoom sessions • Fasting tracker
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => navigate('/programs/make-room-for-the-lord')}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white text-temple-purple font-semibold hover:bg-white/90 transition-colors shadow-lg"
+                >
+                  <Calendar className="w-5 h-5" />
+                  Join the Fast
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => navigate('/programs')}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/10 text-white font-medium hover:bg-white/20 transition-colors border border-white/20"
+                >
+                  Browse All Programs
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Block 2: Daily Bread (Devotional) */}
         <div className="scripture-card animate-fade-in" style={{ animationDelay: '0.1s' }}>
@@ -197,7 +284,7 @@ export const Today = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-temple-purple to-temple-purple-dark flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-lg font-semibold text-temple-gold">Daily Bread</h2>
+              <h2 className="text-lg font-semibold text-temple-purple dark:text-[#E8C49A]">Daily Bread</h2>
             </div>
 
             {devotionalLoading ? (

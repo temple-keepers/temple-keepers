@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePrograms } from '../../hooks/usePrograms'
 import { BookOpen, Plus, Edit, Trash2, Eye, EyeOff, Calendar } from 'lucide-react'
+import { useConfirm } from '../../components/ConfirmModal'
 
 export const AdminPrograms = () => {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const { programs, loading, getPrograms, deleteProgram, togglePublish } = usePrograms()
   const [filter, setFilter] = useState('all') // 'all', 'published', 'draft'
 
@@ -25,9 +27,13 @@ export const AdminPrograms = () => {
   }, [filter])
 
   const handleDelete = async (id, title) => {
-    if (window.confirm(`Delete "${title}"? This will also delete all day content.`)) {
-      await deleteProgram(id)
-    }
+    const yes = await confirm({
+      title: 'Delete Program',
+      message: `Delete "${title}"? This will also delete all day content and cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    })
+    if (yes) await deleteProgram(id)
   }
 
   const handleTogglePublish = async (id, currentStatus) => {

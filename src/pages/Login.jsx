@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { LogIn } from 'lucide-react'
 
@@ -10,6 +10,7 @@ export const Login = () => {
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,7 +23,9 @@ export const Login = () => {
       setError(error.message)
       setLoading(false)
     } else {
-      navigate('/today')
+      const searchParams = new URLSearchParams(location.search)
+      const redirect = searchParams.get('redirect')
+      navigate(redirect || '/today')
     }
   }
 
