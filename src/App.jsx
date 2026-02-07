@@ -9,6 +9,7 @@ import { InstallBanner } from './components/InstallBanner'
 import { UpdateBanner } from './components/UpdateBanner'
 import { ConfirmProvider } from './components/ConfirmModal'
 import { PinLockScreen } from './components/PinLockScreen'
+import { CookieConsent } from './components/CookieConsent'
 
 // ─── Eager loads (critical path — Landing, Auth, Today) ──────────
 import { Landing } from './pages/Landing'
@@ -192,6 +193,7 @@ function App() {
               <InstallBanner />
               <UpdateBanner />
               <AppRoutes />
+              <CookieConsent />
             </ConfirmProvider>
           </AdminProvider>
         </AuthProvider>

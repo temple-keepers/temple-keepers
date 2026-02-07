@@ -10,6 +10,7 @@ export const Signup = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -21,6 +22,12 @@ export const Signup = () => {
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters')
+      setLoading(false)
+      return
+    }
+
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy to continue')
       setLoading(false)
       return
     }
@@ -109,10 +116,27 @@ export const Signup = () => {
             </p>
           </div>
 
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 rounded border-gray-300 text-temple-purple focus:ring-temple-purple dark:border-gray-600"
+              disabled={loading}
+            />
+            <span className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+              I agree to the{' '}
+              <Link to="/terms" className="text-temple-purple dark:text-temple-gold underline" target="_blank">Terms of Service</Link>
+              {' '}and{' '}
+              <Link to="/privacy" className="text-temple-purple dark:text-temple-gold underline" target="_blank">Privacy Policy</Link>.
+              I confirm I am at least 18 years old.
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading}
-            className="btn-primary w-full flex items-center justify-center gap-2"
+            disabled={loading || !agreedToTerms}
+            className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

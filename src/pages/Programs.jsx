@@ -5,6 +5,7 @@ import { useEnrollment } from '../hooks/useEnrollment'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import { BookOpen, Calendar, Clock, Check, Flame, Target } from 'lucide-react'
+import { HealthDisclaimer } from '../components/HealthDisclaimer'
 
 export const Programs = () => {
   const navigate = useNavigate()
@@ -150,6 +151,9 @@ export const Programs = () => {
           </div>
         )}
       </div>
+    </div>
+    <div className="pb-2 px-4">
+      <HealthDisclaimer compact />
     </div>
     <BottomNav />
     </>

@@ -627,7 +627,16 @@ export const Landing = () => {
             </div>
           </div>
 
-          <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="border-t border-white/5 pt-6 mb-6">
+            <p className="text-xs text-gray-600 leading-relaxed text-center max-w-2xl mx-auto">
+              <span className="text-gray-500 font-medium">Health Disclaimer:</span>{' '}
+              Temple Keepers is for educational and inspirational purposes only. It is not a substitute for 
+              professional medical advice, diagnosis, or treatment. Always consult a healthcare professional 
+              before starting any fasting, dietary, or wellness programme.
+            </p>
+          </div>
+
+          <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-xs text-gray-600">
               © 2026 Sagacity Network Ltd, trading as Temple Keepers. All rights reserved.
             </p>
