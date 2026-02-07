@@ -154,13 +154,19 @@ export const Profile = () => {
 
   const loadStats = async () => {
     // Each query is independent — one failing shouldn't zero out the others
-    const safe = (promise) => promise.catch(err => {
-      console.warn('Stats query failed:', err)
-      return { data: null, count: null, error: err }
-    })
+    const safe = (promise) => promise.then(
+      result => {
+        if (result.error) console.warn('Stats query error:', result.error)
+        return result
+      },
+      err => {
+        console.warn('Stats query failed:', err)
+        return { data: null, count: 0, error: err }
+      }
+    )
 
     const [enrollResult, recipesResult, savedResult, checkInsResult, mealsResult, streakResult] = await Promise.all([
-      safe(supabase.from('program_enrollments').select('status, completed_days, programs(title, duration_days)').eq('user_id', user.id)),
+      safe(supabase.from('program_enrollments').select('id, status, completed_days').eq('user_id', user.id)),
       safe(supabase.from('recipes').select('id', { count: 'exact', head: true }).eq('created_by', user.id)),
       safe(supabase.from('saved_recipes').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
       safe(supabase.from('wellness_check_ins').select('id', { count: 'exact', head: true }).eq('user_id', user.id)),
@@ -170,6 +176,8 @@ export const Profile = () => {
 
     const enrollments = enrollResult.data || []
     const totalDays = enrollments.reduce((sum, e) => sum + (e.completed_days?.length || 0), 0)
+
+    console.log('Profile stats loaded:', { enrollments: enrollments.length, streak: streakResult.data })
 
     setStats({
       programsEnrolled: enrollments.length,

@@ -13,7 +13,8 @@ import {
   Sun,
   LogOut,
   Menu,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react'
 
 export const AdminLayout = () => {
@@ -30,6 +31,7 @@ export const AdminLayout = () => {
     { path: '/admin/recipes', label: 'Recipes', icon: UtensilsCrossed },
     { path: '/admin/themes', label: 'Weekly Themes', icon: Calendar },
     { path: '/admin/users', label: 'Users', icon: Users },
+    { path: '/admin/pods', label: 'Community Pods', icon: MessageCircle },
     { path: '/admin/settings', label: 'Settings', icon: Settings }
   ]
 

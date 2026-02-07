@@ -53,6 +53,7 @@ const AdminThemes = lazy(() => import('./pages/admin/Themes').then(m => ({ defau
 const AdminUsers = lazy(() => import('./pages/admin/Users').then(m => ({ default: m.AdminUsers })))
 const AdminEnrollments = lazy(() => import('./pages/admin/Enrollments').then(m => ({ default: m.AdminEnrollments })))
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then(m => ({ default: m.AdminSettings })))
+const AdminPods = lazy(() => import('./pages/admin/Pods').then(m => ({ default: m.AdminPods })))
 
 // ─── Page loading fallback ───────────────────────────────────────
 const PageLoader = () => (
@@ -170,6 +171,7 @@ function AppRoutes() {
         <Route path="themes" element={<Suspense fallback={<PageLoader />}><AdminThemes /></Suspense>} />
         <Route path="users" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
         <Route path="enrollments" element={<Suspense fallback={<PageLoader />}><AdminEnrollments /></Suspense>} />
+        <Route path="pods" element={<Suspense fallback={<PageLoader />}><AdminPods /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageLoader />}><AdminSettings /></Suspense>} />
       </Route>
 
