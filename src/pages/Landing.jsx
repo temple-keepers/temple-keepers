@@ -641,7 +641,7 @@ export const Landing = () => {
               © 2026 Sagacity Network Ltd, trading as Temple Keepers. All rights reserved.
             </p>
             <p className="text-xs text-gray-600">
-              Registered in England · Basildon, UK
+              Registered in England · Company No. 15712287 · Basildon, UK
             </p>
           </div>
         </div>

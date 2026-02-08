@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase'
 
+// VAPID public key for push subscriptions
+const VAPID_PUBLIC_KEY = 'BBhSRp-tbrs4o2Fb_xEMaeemW_05uq_wxGEm8fd1_KPAxofh-UqJKu3_QXvdtI0Qjzxxke4Q5zGNW4PKvw-zY2U'
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -30,25 +33,38 @@ export const notificationService = {
     return permission
   },
 
-  // Subscribe to push notifications (stores subscription in DB)
+  // Subscribe to push notifications
   async subscribeToPush(userId) {
     if (!this.isSupported()) return null
-    
+
     const permission = await this.requestPermission()
     if (permission !== 'granted') return null
 
     try {
       const registration = await navigator.serviceWorker.ready
+
+      // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription()
 
-      if (subscription) {
-        // Save to Supabase
-        const subJson = subscription.toJSON()
-        await supabase.from('push_subscriptions').upsert({
-          user_id: userId,
-          endpoint: subJson.endpoint,
-          keys: subJson.keys
-        }, { onConflict: 'user_id,endpoint' })
+      // If no subscription exists, create one with VAPID key
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        })
+      }
+
+      // Save to Supabase
+      const subJson = subscription.toJSON()
+      const { error } = await supabase.from('push_subscriptions').upsert({
+        user_id: userId,
+        endpoint: subJson.endpoint,
+        keys: subJson.keys,
+        created_at: new Date().toISOString()
+      }, { onConflict: 'user_id,endpoint' })
+
+      if (error) {
+        console.error('Failed to save push subscription:', error)
       }
 
       return subscription
@@ -76,7 +92,7 @@ export const notificationService = {
     }
   },
 
-  // Send a local notification (browser Notification API)
+  // Send a local notification (browser Notification API — for immediate use while app is open)
   sendLocalNotification(title, body, options = {}) {
     if (Notification.permission !== 'granted') return null
 
@@ -95,14 +111,6 @@ export const notificationService = {
     return notification
   },
 
-  // Schedule a local reminder with setTimeout
-  scheduleReminder(title, body, delayMs, options = {}) {
-    if (delayMs <= 0) return null
-    return setTimeout(() => {
-      this.sendLocalNotification(title, body, options)
-    }, delayMs)
-  },
-
   // === IN-APP NOTIFICATIONS ===
 
   async getUnreadCount(userId) {
@@ -111,7 +119,7 @@ export const notificationService = {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('is_read', false)
-    
+
     if (error) return 0
     return count || 0
   },
@@ -123,7 +131,7 @@ export const notificationService = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(limit)
-    
+
     if (error) return []
     return data
   },
@@ -149,7 +157,7 @@ export const notificationService = {
       .insert([{ user_id: userId, title, body, type, link }])
       .select()
       .single()
-    
+
     if (error) console.error('Create notification failed:', error)
     return data
   },
@@ -174,7 +182,6 @@ export const notificationService = {
 
   async getPreferences(userId) {
     try {
-      // Try to fetch existing row
       const { data, error } = await supabase
         .from('notification_preferences')
         .select('*')
@@ -183,7 +190,6 @@ export const notificationService = {
 
       if (data) return data
 
-      // No row — create one via upsert (handles race conditions)
       const { data: newData, error: upsertErr } = await supabase
         .from('notification_preferences')
         .upsert({ user_id: userId }, { onConflict: 'user_id' })
@@ -210,16 +216,16 @@ export const notificationService = {
       )
       .select()
       .single()
-    
+
     if (error) throw error
     return data
   },
 
-  // === FASTING WINDOW REMINDERS ===
+  // === FASTING WINDOW REMINDERS (local, while app is open) ===
 
   scheduleFastingReminders(fastingWindow) {
     if (!fastingWindow) return []
-    
+
     const [start, end] = fastingWindow.split('-')
     const now = new Date()
     const timers = []
@@ -237,42 +243,27 @@ export const notificationService = {
     // 15min before eating window opens
     const preStart = new Date(startTime.getTime() - 15 * 60 * 1000)
     if (preStart > now) {
-      timers.push(this.scheduleReminder(
-        '🍽️ Eating window opens soon',
-        `Your eating window starts at ${start}. Prepare something nourishing!`,
-        preStart.getTime() - now.getTime(),
-        { tag: 'fasting-start' }
-      ))
+      timers.push(setTimeout(() => {
+        this.sendLocalNotification(
+          '🍽️ Eating window opens soon',
+          `Your eating window starts at ${start}. Prepare something nourishing!`,
+          { tag: 'fasting-start' }
+        )
+      }, preStart.getTime() - now.getTime()))
     }
 
     // 30min before eating window closes
     const preEnd = new Date(endTime.getTime() - 30 * 60 * 1000)
     if (preEnd > now) {
-      timers.push(this.scheduleReminder(
-        '⏰ Eating window closing soon',
-        `Your eating window ends at ${end}. Last chance for a meal!`,
-        preEnd.getTime() - now.getTime(),
-        { tag: 'fasting-end' }
-      ))
+      timers.push(setTimeout(() => {
+        this.sendLocalNotification(
+          '⏰ Eating window closing soon',
+          `Your eating window ends at ${end}. Last chance for a meal!`,
+          { tag: 'fasting-end' }
+        )
+      }, preEnd.getTime() - now.getTime()))
     }
 
     return timers
-  },
-
-  // Schedule morning devotional reminder
-  scheduleMorningReminder(reminderTime = '07:00') {
-    const [h, m] = reminderTime.split(':').map(Number)
-    const now = new Date()
-    const target = new Date()
-    target.setHours(h, m, 0, 0)
-    
-    if (target <= now) return null // Already passed today
-    
-    return this.scheduleReminder(
-      '📖 Your Daily Bread is ready',
-      'Start your day with today\'s devotional and scripture.',
-      target.getTime() - now.getTime(),
-      { tag: 'devotional' }
-    )
   }
 }

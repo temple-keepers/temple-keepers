@@ -9,7 +9,7 @@ import { useActiveCohorts } from '../features/fasting/hooks/useFasting'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Calendar, Clock, BookOpen, Check } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, BookOpen, Check, Lock } from 'lucide-react'
 import { ghlService } from '../services/ghlService'
 
 export const ProgramDetail = () => {
@@ -292,28 +292,81 @@ export const ProgramDetail = () => {
               Daily Journey
             </h2>
             <div className="space-y-2">
-              {days.map(day => (
-                <div
-                  key={day.id}
-                  className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-temple-purple/10 dark:bg-temple-gold/10 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-temple-purple dark:text-temple-gold">
-                      {day.day_number}
-                    </span>
+              {days.map(day => {
+                const completedDaysSet = new Set(enrollment?.completed_days || [])
+                const isCompleted = completedDaysSet.has(day.day_number)
+                
+                // Calculate which days are unlocked based on start_date
+                let isUnlocked = false
+                let daysUntilUnlock = 0
+                if (enrollment) {
+                  const startDate = new Date(enrollment.start_date + 'T00:00:00')
+                  const today = new Date()
+                  today.setHours(0, 0, 0, 0)
+                  const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
+                  const maxUnlockedDay = Math.min(daysSinceStart + 1, program.duration_days)
+                  isUnlocked = day.day_number <= maxUnlockedDay
+                  daysUntilUnlock = day.day_number - maxUnlockedDay
+                }
+
+                const isClickable = enrollment && isUnlocked
+
+                return (
+                  <div
+                    key={day.id}
+                    onClick={() => isClickable && navigate(`/programs/${program.slug}/day/${day.day_number}`)}
+                    className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
+                      isClickable
+                        ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                        : enrollment ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                      isCompleted
+                        ? 'bg-green-100 dark:bg-green-900/30'
+                        : isUnlocked && enrollment
+                          ? 'bg-temple-purple/10 dark:bg-temple-gold/10'
+                          : 'bg-gray-100 dark:bg-gray-800'
+                    }`}>
+                      {isCompleted ? (
+                        <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      ) : isUnlocked && enrollment ? (
+                        <span className="text-sm font-semibold text-temple-purple dark:text-temple-gold">
+                          {day.day_number}
+                        </span>
+                      ) : enrollment ? (
+                        <Lock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-600" />
+                      ) : (
+                        <span className="text-sm font-semibold text-gray-400 dark:text-gray-500">
+                          {day.day_number}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`font-medium ${
+                        isCompleted
+                          ? 'text-green-700 dark:text-green-400'
+                          : isClickable
+                            ? 'text-gray-900 dark:text-white'
+                            : enrollment ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-white'
+                      }`}>
+                        {day.title}
+                        {isCompleted && <span className="text-xs ml-2">✓</span>}
+                      </h3>
+                      {isClickable && day.anchor_sentence && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {day.anchor_sentence}
+                        </p>
+                      )}
+                      {enrollment && !isUnlocked && daysUntilUnlock > 0 && (
+                        <p className="text-xs text-gray-400 dark:text-gray-600 mt-0.5">
+                          Unlocks in {daysUntilUnlock} day{daysUntilUnlock !== 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      {day.title}
-                    </h3>
-                    {day.anchor_sentence && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {day.anchor_sentence}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

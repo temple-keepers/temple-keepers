@@ -177,40 +177,48 @@ export const useEnrollment = () => {
 
   // Mark day complete
   const markDayComplete = async (enrollmentId, dayNumber, reflectionResponse = {}) => {
-    // Get current enrollment
+    // Get current enrollment with program info
     const { data: enrollment } = await supabase
       .from('program_enrollments')
-      .select('completed_days')
+      .select('completed_days, programs(duration_days)')
       .eq('id', enrollmentId)
       .single()
 
     if (!enrollment) return { error: new Error('Enrollment not found') }
 
-    // Add day to completed days if not already there
-    const completedDays = enrollment.completed_days || []
+    // Add ONLY this day to completed days if not already there
+    const completedDays = [...(enrollment.completed_days || [])]
     if (!completedDays.includes(dayNumber)) {
       completedDays.push(dayNumber)
     }
 
-    // Update enrollment
+    // Calculate completion percentage
+    const totalDays = enrollment.programs?.duration_days || 1
+    const completionPercentage = Math.round((completedDays.length / totalDays) * 100)
+
+    // Update enrollment — only update completed_days, current_day, and percentage
     const { data: updatedEnrollment, error: enrollmentError } = await supabase
       .from('program_enrollments')
-      .update({ completed_days: completedDays })
+      .update({ 
+        completed_days: completedDays,
+        current_day: dayNumber + 1,
+        completion_percentage: completionPercentage
+      })
       .eq('id', enrollmentId)
       .select()
       .single()
 
     if (enrollmentError) return { error: enrollmentError }
 
-    // Save completion record
+    // Save completion record (upsert to avoid duplicates)
     const { data: completion, error: completionError } = await supabase
       .from('program_day_completions')
-      .insert([{
+      .upsert([{
         enrollment_id: enrollmentId,
         day_number: dayNumber,
         reflection_response: reflectionResponse,
         action_completed: true
-      }])
+      }], { onConflict: 'enrollment_id,day_number', ignoreDuplicates: false })
       .select()
       .single()
 

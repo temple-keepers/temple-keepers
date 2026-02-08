@@ -58,8 +58,9 @@ export const ProgramDay = () => {
     setEnrollment(enrollmentData)
 
     // Calculate which day is currently unlocked
-    const startDate = new Date(enrollmentData.start_date)
+    const startDate = new Date(enrollmentData.start_date + 'T00:00:00')
     const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
     const currentUnlockedDay = daysSinceStart + 1 // Day 1 unlocks on start date
     
@@ -159,14 +160,18 @@ export const ProgramDay = () => {
 
   const currentDayNum = parseInt(dayNumber)
   const canGoPrevious = currentDayNum > 1
-  const canGoNext = currentDayNum < program.duration_days
   
   // Calculate unlocked day
-  const startDate = new Date(enrollment.start_date)
+  const startDate = new Date(enrollment.start_date + 'T00:00:00')
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const daysSinceStart = Math.floor((today - startDate) / (1000 * 60 * 60 * 24))
-  const currentUnlockedDay = daysSinceStart + 1
+  const currentUnlockedDay = Math.min(daysSinceStart + 1, program.duration_days)
   const isLocked = currentDayNum > currentUnlockedDay
+
+  // Only allow navigating to next day if it's unlocked
+  const nextDayIsUnlocked = (currentDayNum + 1) <= currentUnlockedDay
+  const canGoNext = currentDayNum < program.duration_days && nextDayIsUnlocked
 
   // Show locked state
   if (isLocked && !day) {
