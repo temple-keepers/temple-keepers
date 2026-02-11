@@ -14,7 +14,8 @@ import {
   Menu, 
   X,
   ArrowLeft,
-  Settings
+  Settings,
+  ShoppingBag
 } from 'lucide-react'
 import { NotificationBell } from './NotificationBell'
 
@@ -37,6 +38,7 @@ export const AppHeader = ({ title, showBackButton = false, backTo = '/today' }) 
     { path: '/programs', icon: Calendar, label: 'Programs' },
     { path: '/recipes', icon: ChefHat, label: 'Recipes' },
     { path: '/wellness', icon: Heart, label: 'Wellness' },
+    { path: '/shop', icon: ShoppingBag, label: 'Shop' },
     { path: '/profile', icon: User, label: 'Profile' },
   ]
 

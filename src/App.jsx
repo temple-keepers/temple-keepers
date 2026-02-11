@@ -42,6 +42,11 @@ const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Pri
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Cookies = lazy(() => import('./pages/Cookies').then(m => ({ default: m.Cookies })))
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })))
+const Shop = lazy(() => import('./pages/Shop').then(m => ({ default: m.Shop })))
+const ShopProduct = lazy(() => import('./pages/ShopProduct').then(m => ({ default: m.ShopProduct })))
+const ShopSuccess = lazy(() => import('./pages/ShopSuccess').then(m => ({ default: m.ShopSuccess })))
+const ShopLibrary = lazy(() => import('./pages/ShopLibrary').then(m => ({ default: m.ShopLibrary })))
+const ShopOrders = lazy(() => import('./pages/ShopOrders').then(m => ({ default: m.ShopOrders })))
 
 // Admin — lazy loaded as a group (only admins ever need these)
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -55,6 +60,8 @@ const AdminUsers = lazy(() => import('./pages/admin/Users').then(m => ({ default
 const AdminEnrollments = lazy(() => import('./pages/admin/Enrollments').then(m => ({ default: m.AdminEnrollments })))
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then(m => ({ default: m.AdminSettings })))
 const AdminPods = lazy(() => import('./pages/admin/Pods').then(m => ({ default: m.AdminPods })))
+const AdminShop = lazy(() => import('./pages/admin/Shop').then(m => ({ default: m.AdminShop })))
+const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements').then(m => ({ default: m.AdminAnnouncements })))
 
 // ─── Page loading fallback ───────────────────────────────────────
 const PageLoader = () => (
@@ -161,6 +168,13 @@ function AppRoutes() {
       <Route path="/pods" element={<ProtectedRoute><Pods /></ProtectedRoute>} />
       <Route path="/pods/:id" element={<ProtectedRoute><PodDetail /></ProtectedRoute>} />
 
+      {/* Shop */}
+      <Route path="/shop" element={<ProtectedRoute><Shop /></ProtectedRoute>} />
+      <Route path="/shop/library" element={<ProtectedRoute><ShopLibrary /></ProtectedRoute>} />
+      <Route path="/shop/orders" element={<ProtectedRoute><ShopOrders /></ProtectedRoute>} />
+      <Route path="/shop/success" element={<ProtectedRoute><ShopSuccess /></ProtectedRoute>} />
+      <Route path="/shop/:slug" element={<ProtectedRoute><ShopProduct /></ProtectedRoute>} />
+
       {/* Admin */}
       <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
         <Route index element={<Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>} />
@@ -173,6 +187,8 @@ function AppRoutes() {
         <Route path="users" element={<Suspense fallback={<PageLoader />}><AdminUsers /></Suspense>} />
         <Route path="enrollments" element={<Suspense fallback={<PageLoader />}><AdminEnrollments /></Suspense>} />
         <Route path="pods" element={<Suspense fallback={<PageLoader />}><AdminPods /></Suspense>} />
+        <Route path="shop" element={<Suspense fallback={<PageLoader />}><AdminShop /></Suspense>} />
+        <Route path="announcements" element={<Suspense fallback={<PageLoader />}><AdminAnnouncements /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageLoader />}><AdminSettings /></Suspense>} />
       </Route>
 

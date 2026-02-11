@@ -9,8 +9,7 @@ export const generateRecipe = async ({
   cookingTime = 30,
   servings = 4,
   includeIngredients = [],
-  excludeIngredients = [],
-  includeScripture = true
+  excludeIngredients = []
 }) => {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
@@ -36,10 +35,13 @@ Create a healthy, delicious ${mealType} recipe with the following parameters:
 - Cooking time: ~${cookingTime} minutes
 - Servings: ${servings}
 
-${includeScripture ? `
-IMPORTANT: Include a relevant NKJV Scripture verse that connects faith and body stewardship.
-The scripture should relate to gratitude, provision, or caring for the body as God's temple.
-` : ''}
+CRITICAL HEALTH REQUIREMENTS:
+- This recipe MUST be genuinely healthy and nutritious. No junk food, no heavily processed ingredients.
+- Use whole, unprocessed ingredients wherever possible.
+- Minimise or eliminate: refined sugar, white flour, artificial additives, trans fats, processed seed oils, excessive sodium.
+- Prioritise: vegetables, leafy greens, quality proteins, healthy fats (olive oil, avocado, coconut oil, nuts), whole grains, herbs and spices.
+- Aim for nutrient density — every ingredient should contribute vitamins, minerals, fibre, or quality macronutrients.
+- If the meal type is "dessert" or "snack", use natural sweetness from fruits, dates, or raw honey only — no refined sugar.
 
 Format as JSON with this structure:
 {
@@ -80,16 +82,25 @@ Format as JSON with this structure:
     "fat": "Xg",
     "fiber": "Xg"
   },
-  ${includeScripture ? `
-  "scripture": {
-    "reference": "Book Chapter:Verse (NKJV)",
-    "text": "Full verse text",
-    "reflection": "1-2 sentences connecting the verse to nourishing the body"
-  },
-  ` : ''}
   "tips": ["tip1", "tip2"],
-  "notes": "Any special notes or variations"
+  "notes": "Any special notes or variations",
+  "healthySwaps": [
+    {
+      "commonIngredient": "Name of a common unhealthy ingredient people typically use in this type of dish",
+      "healthyAlternative": "The healthy alternative used or recommended",
+      "reason": "Brief explanation of why the swap is healthier (1 sentence)"
+    }
+  ]
 }
+
+For "healthySwaps", include 2-4 practical swaps that are relevant to this recipe. Examples:
+- White rice → Cauliflower rice (lower carb, more nutrients)
+- Sour cream → Greek yoghurt (more protein, probiotics)
+- Vegetable oil → Extra virgin olive oil (heart-healthy fats)
+- White pasta → Courgette noodles (more fibre, fewer carbs)
+- Sugar → Dates or raw honey (natural sweetness with minerals)
+- White flour → Almond flour or coconut flour (lower glycaemic, more nutrients)
+These should be relevant to the type of dish, not random.
 
 Return ONLY valid JSON, no markdown formatting, no explanations.
 `
@@ -136,7 +147,7 @@ Requirements:
 - Variety across days (no repeated meals)
 - Balanced nutrition
 - Realistic preparation (max 45 minutes per meal)
-- Faith-based wellness approach
+- Healthy, whole-food focused approach
 
 Format as JSON:
 {
@@ -161,12 +172,7 @@ Format as JSON:
       "items": ["chicken breast (2 lbs)", "eggs (1 dozen)"]
     }
   ],
-  "prepTips": ["tip1", "tip2"],
-  "scripture": {
-    "reference": "NKJV verse reference",
-    "text": "Verse text",
-    "theme": "Weekly theme (e.g., 'Gratitude & Provision')"
-  }
+  "prepTips": ["tip1", "tip2"]
 }
 
 Return ONLY valid JSON.
@@ -189,6 +195,108 @@ Return ONLY valid JSON.
       success: false,
       error: error.message || 'Failed to generate meal plan'
     }
+  }
+}
+
+export const generateRecipeImage = async (recipeId, title, description, mealType, cuisine) => {
+  try {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY
+    if (!apiKey) {
+      return { success: false, error: 'Gemini API key not configured' }
+    }
+
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Build a food photography prompt
+    const imagePrompt = [
+      `Professional food photography of ${title}.`,
+      description || '',
+      mealType ? `This is a ${mealType} dish.` : '',
+      cuisine && cuisine !== 'any' ? `${cuisine} cuisine.` : '',
+      'Shot from a 45-degree angle on a beautiful ceramic plate,',
+      'natural soft lighting, shallow depth of field,',
+      'garnished beautifully, warm inviting tones,',
+      'clean modern food styling, no text, no watermarks, photorealistic.'
+    ].filter(Boolean).join(' ')
+
+    // Call Imagen API directly (client-side)
+    const imagenResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          instances: [{ prompt: imagePrompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: '4:3',
+          },
+        }),
+      }
+    )
+
+    if (!imagenResponse.ok) {
+      const errorText = await imagenResponse.text()
+      console.error('Imagen API error:', imagenResponse.status, errorText)
+      return { success: false, error: `Image API error: ${imagenResponse.status}` }
+    }
+
+    const imagenData = await imagenResponse.json()
+
+    if (!imagenData.predictions || imagenData.predictions.length === 0) {
+      return { success: false, error: 'No image generated' }
+    }
+
+    // Decode base64 image
+    const base64Image = imagenData.predictions[0].bytesBase64Encoded
+    const mimeType = imagenData.predictions[0].mimeType || 'image/png'
+    const binaryStr = atob(base64Image)
+    const bytes = new Uint8Array(binaryStr.length)
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i)
+    }
+
+    // Upload to Supabase Storage
+    const ext = mimeType === 'image/jpeg' ? 'jpg' : 'png'
+    const filePath = `${recipeId}/hero.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('recipe-images')
+      .upload(filePath, bytes, { contentType: mimeType, upsert: true })
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError)
+      return { success: false, error: `Upload failed: ${uploadError.message}` }
+    }
+
+    // Get public URL and update recipe
+    const { data: urlData } = supabase.storage
+      .from('recipe-images')
+      .getPublicUrl(filePath)
+
+    const imageUrl = urlData.publicUrl
+
+    const { error: updateError } = await supabase
+      .from('recipes')
+      .update({ image_urls: [imageUrl] })
+      .eq('id', recipeId)
+
+    if (updateError) {
+      console.error('Recipe update error:', updateError)
+      return { success: false, error: `Recipe update failed: ${updateError.message}` }
+    }
+
+    return { success: true, imageUrl }
+  } catch (error) {
+    console.error('Image generation error:', error)
+    return { success: false, error: error.message }
   }
 }
 

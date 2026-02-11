@@ -16,6 +16,7 @@ const POINTS_TABLE = {
   streak_bonus_7: 50,
   streak_bonus_14: 75,
   streak_bonus_30: 150,
+  referral_signup: 25,
 }
 
 // Level thresholds
@@ -190,7 +191,7 @@ export const gamificationService = {
         supabase.from('fasting_logs').select('id', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('program_enrollments').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('status', 'completed'),
         supabase.from('pod_posts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-        supabase.from('recipes').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('recipes').select('id', { count: 'exact', head: true }).eq('created_by', userId),
         supabase.from('user_points').select('points').eq('user_id', userId)
       ])
 

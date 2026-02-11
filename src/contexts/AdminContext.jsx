@@ -51,7 +51,7 @@ export const AdminProvider = ({ children }) => {
 
     let query = supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, role, tier, phone, birth_year, created_at')
+      .select('id, first_name, email, role, tier, phone, birth_year, created_at, avatar_url, gender, marital_status, city, country, church_denomination, timezone')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 

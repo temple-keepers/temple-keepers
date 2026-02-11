@@ -6,7 +6,7 @@ import { mealPlanService } from '../features/mealplans/services/mealPlanService'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Clock, Users, Heart, BookOpen, ChefHat, CalendarPlus, X, Plus } from 'lucide-react'
+import { ArrowLeft, Clock, Users, Heart, ChefHat, CalendarPlus, X, Plus, ArrowRightLeft, ImageIcon } from 'lucide-react'
 
 const DAYS = mealPlanService.DAYS
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack']
@@ -161,6 +161,20 @@ export const RecipeDetail = () => {
       {/* Header */}
       <AppHeader showBackButton={true} backTo="/recipes" />
 
+      {/* Hero Image */}
+      {recipe.image_urls && recipe.image_urls.length > 0 && (
+        <div className="max-w-5xl mx-auto px-4 pt-6">
+          <div className="rounded-2xl overflow-hidden shadow-lg aspect-[4/3] sm:aspect-[16/9] bg-gray-200 dark:bg-gray-700">
+            <img
+              src={recipe.image_urls[0]}
+              alt={recipe.title}
+              className="w-full h-full object-cover"
+              loading="eager"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-start justify-between mb-6">
@@ -203,27 +217,6 @@ export const RecipeDetail = () => {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* Scripture */}
-            {recipe.scripture && (
-              <div className="glass-card p-6 bg-temple-purple/5 dark:bg-temple-gold/5 border-2 border-temple-purple/20 dark:border-temple-gold/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <BookOpen className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Scripture Meditation
-                  </h2>
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 italic mb-2">
-                  "{recipe.scripture.text}"
-                </p>
-                <p className="text-sm font-semibold text-temple-purple dark:text-temple-gold mb-3">
-                  — {recipe.scripture.reference}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {recipe.scripture.reflection}
-                </p>
-              </div>
-            )}
-
             {/* Ingredients */}
             <div className="glass-card p-6">
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -288,17 +281,71 @@ export const RecipeDetail = () => {
               </div>
             )}
 
-            {/* Notes */}
-            {recipe.notes && (
-              <div className="glass-card p-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Notes
-                </h3>
-                <p className="text-gray-700 dark:text-gray-300">
-                  {recipe.notes}
-                </p>
-              </div>
-            )}
+            {/* Healthy Swaps */}
+            {(() => {
+              // Parse healthy swaps from notes field
+              const swapsMatch = recipe.notes?.match(/---HEALTHY_SWAPS---(.*)/s)
+              if (!swapsMatch) return null
+              try {
+                const swaps = JSON.parse(swapsMatch[1])
+                if (!swaps || swaps.length === 0) return null
+                return (
+                  <div className="glass-card p-6 bg-green-50 dark:bg-green-900/10 border-2 border-green-200 dark:border-green-800/30">
+                    <div className="flex items-center gap-2 mb-4">
+                      <ArrowRightLeft className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Healthy Swaps
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Common ingredient swaps to make this dish even healthier
+                    </p>
+                    <div className="space-y-3">
+                      {swaps.map((swap, i) => (
+                        <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/70 dark:bg-gray-800/50">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                            <span className="text-xs">❌</span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-red-600 dark:text-red-400 line-through">
+                                {swap.commonIngredient}
+                              </span>
+                              <span className="text-gray-400">→</span>
+                              <span className="text-sm font-semibold text-green-700 dark:text-green-400">
+                                {swap.healthyAlternative}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {swap.reason}
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                            <span className="text-xs">✅</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              } catch { return null }
+            })()}
+
+            {/* Notes (without the swaps JSON) */}
+            {recipe.notes && (() => {
+              const cleanNotes = recipe.notes.replace(/---HEALTHY_SWAPS---.*/s, '').trim()
+              if (!cleanNotes) return null
+              return (
+                <div className="glass-card p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Notes
+                  </h3>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    {cleanNotes}
+                  </p>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Sidebar */}

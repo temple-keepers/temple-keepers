@@ -54,6 +54,15 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error
       setProfile(data)
 
+      // Auto-detect timezone if not set
+      if (!data.timezone) {
+        const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (detectedTz) {
+          supabase.from('profiles').update({ timezone: detectedTz }).eq('id', userId)
+          data.timezone = detectedTz
+        }
+      }
+
       // Check if PIN lock should activate
       const pinEnabled = localStorage.getItem(`tk-pin-enabled-${userId}`)
       const alreadyUnlocked = sessionStorage.getItem(`tk-pin-unlocked-${userId}`)

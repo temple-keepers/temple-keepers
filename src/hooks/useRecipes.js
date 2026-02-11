@@ -33,9 +33,8 @@ export const useRecipes = () => {
       query = query.lte('total_time', filters.maxTime)
     }
     
-    if (filters.dietaryTags && filters.dietaryTags.length > 0) {
-      query = query.contains('dietary_tags', filters.dietaryTags)
-    }
+    // Dietary tag filtering handled client-side for case/format flexibility
+    // (DB has mixed formats: "Daniel Fast", "Daniel-Fast", "Gluten-Free", etc.)
     
     if (filters.search) {
       query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
@@ -44,7 +43,18 @@ export const useRecipes = () => {
     const { data, error } = await query
     
     if (!error && data) {
-      setRecipes(data)
+      // Client-side dietary tag filtering (case/format insensitive)
+      let filtered = data
+      if (filters.dietaryTags && filters.dietaryTags.length > 0) {
+        const normalise = (s) => s.toLowerCase().replace(/[\s-]+/g, '')
+        const wanted = filters.dietaryTags.map(normalise)
+        filtered = data.filter(recipe => {
+          if (!recipe.dietary_tags || recipe.dietary_tags.length === 0) return false
+          const recipeTags = recipe.dietary_tags.map(normalise)
+          return wanted.every(w => recipeTags.some(r => r.includes(w) || w.includes(r)))
+        })
+      }
+      setRecipes(filtered)
     }
     
     setLoading(false)
@@ -62,8 +72,23 @@ export const useRecipes = () => {
     return { data, error }
   }
 
-  // Create recipe
+  // Create recipe (with duplicate title check)
   const createRecipe = async (recipeData) => {
+    // Check for existing recipe with same title by this user
+    if (user?.id && recipeData.title) {
+      const { data: existing } = await supabase
+        .from('recipes')
+        .select('id')
+        .eq('created_by', user.id)
+        .ilike('title', recipeData.title)
+        .limit(1)
+        .maybeSingle()
+
+      if (existing) {
+        return { data: null, error: { message: `You already have a recipe called "${recipeData.title}"` } }
+      }
+    }
+
     const { data, error } = await supabase
       .from('recipes')
       .insert([{

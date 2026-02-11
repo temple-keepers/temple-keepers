@@ -7,8 +7,9 @@ import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { 
   Check, Plus, Trash2, ShoppingCart, ChevronDown, ChevronRight,
-  RefreshCw, Package, Info, Warehouse
+  RefreshCw, Package, Info, Warehouse, Share2
 } from 'lucide-react'
+import { shareShoppingListPdf } from '../utils/sharePdf'
 
 export const ShoppingList = () => {
   const { planId } = useParams()
@@ -114,6 +115,22 @@ export const ShoppingList = () => {
     setCollapsedCategories(updated)
   }
 
+  // Share shopping list as PDF
+  const [sharing, setSharing] = useState(false)
+
+  const handleShareList = async () => {
+    setSharing(true)
+    try {
+      await shareShoppingListPdf(items, list?.title || 'Shopping List')
+      toast.success('PDF ready!')
+    } catch (err) {
+      console.error('Share failed:', err)
+      toast.error('Failed to generate PDF')
+    } finally {
+      setSharing(false)
+    }
+  }
+
   // Group items by category
   const groupedItems = items.reduce((acc, item, index) => {
     const cat = item.category || 'Other'
@@ -212,6 +229,14 @@ export const ShoppingList = () => {
           >
             <Warehouse className="w-4 h-4" />
             My Pantry
+          </button>
+          <button
+            onClick={handleShareList}
+            disabled={sharing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            <Share2 className={`w-4 h-4 ${sharing ? 'animate-pulse' : ''}`} />
+            {sharing ? 'Creating PDF...' : 'Share PDF'}
           </button>
         </div>
 

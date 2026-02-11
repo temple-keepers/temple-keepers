@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { generateRecipe } from '../lib/recipeAI'
+import { generateRecipe, generateRecipeImage } from '../lib/recipeAI'
 import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
@@ -126,9 +126,12 @@ export const RecipeGenerator = () => {
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
       nutrition: recipe.nutrition,
-      scripture: recipe.scripture || null,
       tips: recipe.tips || [],
-      notes: recipe.notes || ''
+      notes: recipe.notes || '',
+      // Store healthy swaps in notes as a JSON section if present
+      ...(recipe.healthySwaps && recipe.healthySwaps.length > 0 ? {
+        notes: (recipe.notes || '') + (recipe.notes ? '\n\n' : '') + '---HEALTHY_SWAPS---' + JSON.stringify(recipe.healthySwaps)
+      } : {})
     }
 
     const { data, error } = await createRecipe(recipeData)
@@ -136,6 +139,23 @@ export const RecipeGenerator = () => {
     if (!error && data) {
       setSavedIndexes(prev => new Set([...prev, index]))
       toast.success(`"${recipe.title}" saved! 🙏`)
+
+      // Generate image in the background (don't block the user)
+      generateRecipeImage(
+        data.id,
+        recipe.title,
+        recipe.description,
+        saveMealType,
+        recipe.cuisine || cuisine
+      ).then(result => {
+        if (result.success) {
+          toast.success(`📸 Image generated for "${recipe.title}"`, { duration: 3000 })
+        } else {
+          console.warn('Image generation failed:', result.error)
+        }
+      }).catch((err) => {
+        console.warn('Image generation failed for', recipe.title, err)
+      })
     } else {
       console.error('Save error:', error)
       toast.error(`Failed to save: ${error?.message || 'Unknown error'}`)
@@ -162,7 +182,7 @@ export const RecipeGenerator = () => {
 
       <div className="max-w-5xl mx-auto px-4 py-6">
         <p className="text-gray-600 dark:text-gray-400 mb-6">
-          Create custom recipes with scripture-based inspiration
+          Create custom healthy recipes powered by AI
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -218,7 +238,7 @@ export const RecipeGenerator = () => {
               {/* Time, Servings & Count */}
               <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
                     <Clock className="w-4 h-4" />
                     Max Time
                   </label>
@@ -233,7 +253,7 @@ export const RecipeGenerator = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
                     <Users className="w-4 h-4" />
                     Servings
                   </label>
@@ -247,7 +267,7 @@ export const RecipeGenerator = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
                     <Sparkles className="w-4 h-4" />
                     Recipes
                   </label>
@@ -467,21 +487,6 @@ export const RecipeGenerator = () => {
                     </div>
                   )}
 
-                  {/* Scripture */}
-                  {activeRecipe.scripture && (
-                    <div className="p-4 rounded-lg bg-temple-purple/5 dark:bg-temple-gold/5 border-l-4 border-temple-purple dark:border-temple-gold mb-6">
-                      <p className="text-sm italic text-gray-700 dark:text-gray-300 mb-2">
-                        "{activeRecipe.scripture.text}"
-                      </p>
-                      <p className="text-xs font-semibold text-temple-purple dark:text-temple-gold mb-2">
-                        — {activeRecipe.scripture.reference}
-                      </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {activeRecipe.scripture.reflection}
-                      </p>
-                    </div>
-                  )}
-
                   {/* Ingredients */}
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
@@ -530,6 +535,34 @@ export const RecipeGenerator = () => {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* Healthy Swaps */}
+                  {activeRecipe.healthySwaps && activeRecipe.healthySwaps.length > 0 && (
+                    <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30">
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
+                        💡 Healthy Swaps
+                      </h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                        Common ingredient swaps to make this type of dish even healthier
+                      </p>
+                      <div className="space-y-2">
+                        {activeRecipe.healthySwaps.map((swap, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs flex-wrap">
+                            <span className="px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through">
+                              {swap.commonIngredient}
+                            </span>
+                            <span className="text-gray-400">→</span>
+                            <span className="px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
+                              {swap.healthyAlternative}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 italic">
+                              {swap.reason}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

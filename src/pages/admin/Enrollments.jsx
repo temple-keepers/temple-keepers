@@ -60,7 +60,6 @@ export const AdminEnrollments = () => {
           *,
           profiles:user_id (
             first_name,
-            last_name,
             email
           ),
           programs:program_id (
@@ -102,7 +101,7 @@ export const AdminEnrollments = () => {
     const matchesProgram = selectedProgram === 'all' || enrollment.program_id === selectedProgram
     const matchesSearch = !searchTerm || 
       enrollment.profiles?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      enrollment.profiles?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+
       enrollment.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       enrollment.programs?.title?.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -260,7 +259,7 @@ export const AdminEnrollments = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {enrollment.profiles?.first_name} {enrollment.profiles?.last_name}
+                          {enrollment.profiles?.first_name || 'Unnamed'}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
                           {enrollment.profiles?.email}

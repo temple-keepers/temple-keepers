@@ -131,11 +131,13 @@ export const ProgramDetail = () => {
     
     if (!error && data) {
       // Track enrollment in GHL (non-blocking)
-      ghlService.trackProgramEnrollment(
-        profile,
-        program,
-        fastingSelection?.fasting_type
-      )
+      ghlService.programEnrolled({
+        email: profile?.email || user?.email,
+        firstName: profile?.first_name,
+        programTitle: program.title,
+        programSlug: program.slug,
+        fastingType: fastingSelection?.fasting_type,
+      })
 
       // Navigate to Day 1
       navigate(`/programs/${program.slug}/day/1`)

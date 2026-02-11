@@ -3,6 +3,8 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { UserPlus } from 'lucide-react'
 import { ghlService } from '../services/ghlService'
+import { emailService } from '../services/emailService'
+import { referralService } from '../services/referralService'
 
 export const Signup = () => {
   const [firstName, setFirstName] = useState('')
@@ -14,6 +16,8 @@ export const Signup = () => {
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const refCode = searchParams.get('ref')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -32,7 +36,7 @@ export const Signup = () => {
       return
     }
 
-    const { error } = await signUp(email, password, firstName)
+    const { data, error } = await signUp(email, password, firstName)
 
     if (error) {
       setError(error.message)
@@ -41,7 +45,18 @@ export const Signup = () => {
       // Track signup in GHL (non-blocking)
       ghlService.userSignup({ email, firstName })
 
-      const searchParams = new URLSearchParams(location.search)
+      // Send welcome email via Resend (non-blocking)
+      emailService.welcome({ email, firstName })
+
+      // Record referral if signup came via a referral link (non-blocking)
+      if (refCode && data?.user?.id) {
+        referralService.lookupReferrer(refCode).then(referrerId => {
+          if (referrerId) {
+            referralService.recordReferral(referrerId, data.user.id, refCode)
+          }
+        })
+      }
+
       const redirect = searchParams.get('redirect')
       navigate(redirect || '/today')
     }

@@ -8,8 +8,9 @@ import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { 
   Plus, X, Sparkles, ShoppingCart, GripVertical, Search,
-  Coffee, Sandwich, UtensilsCrossed, Apple, Clock, Trash2, Warehouse, Info
+  Coffee, Sandwich, UtensilsCrossed, Apple, Clock, Trash2, Warehouse, Info, Share2
 } from 'lucide-react'
+import { shareMealPlanPdf } from '../utils/sharePdf'
 
 const DAYS = mealPlanService.DAYS
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack']
@@ -199,6 +200,24 @@ export const MealPlanBuilder = () => {
     dragOverSlot.current = null
   }
 
+  // ─── Share ─────────────────────────────────────────────
+
+  const [sharing, setSharing] = useState(false)
+
+  const handleShareMealPlan = async () => {
+    if (!plan) return
+    setSharing(true)
+    try {
+      await shareMealPlanPdf(plan, DAYS, MEAL_TYPES)
+      toast.success('PDF ready!')
+    } catch (err) {
+      console.error('Share failed:', err)
+      toast.error('Failed to generate PDF')
+    } finally {
+      setSharing(false)
+    }
+  }
+
   // ─── Helpers ───────────────────────────────────────────
 
   const getMealsForSlot = (dayOfWeek, mealType) => {
@@ -262,6 +281,14 @@ export const MealPlanBuilder = () => {
           >
             <Warehouse className="w-4 h-4" />
             My Pantry
+          </button>
+          <button
+            onClick={handleShareMealPlan}
+            disabled={sharing}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors text-sm disabled:opacity-50"
+          >
+            <Share2 className={`w-4 h-4 ${sharing ? 'animate-pulse' : ''}`} />
+            {sharing ? 'Creating PDF...' : 'Share PDF'}
           </button>
         </div>
 

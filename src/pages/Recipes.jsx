@@ -17,13 +17,18 @@ export const Recipes = () => {
     dietaryTags: []
   })
 
+  // Load recipes on mount and whenever filters change
   useEffect(() => {
-    loadRecipes()
-  }, [])
+    getRecipes(filters)
+  }, [filters.mealType, filters.cuisine, filters.maxTime, JSON.stringify(filters.dietaryTags)])
 
-  const loadRecipes = async () => {
-    await getRecipes(filters)
-  }
+  // Debounced search — auto-search as user types
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      getRecipes(filters)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [filters.search])
 
   const handleSearch = async () => {
     await getRecipes(filters)
@@ -175,7 +180,28 @@ export const Recipes = () => {
                   onClick={() => navigate(`/recipes/${recipe.id}`)}
                   className="glass-card overflow-hidden hover:scale-[1.02] transition-all cursor-pointer group"
                 >
-                  {/* Recipe Header */}
+                  {/* Recipe Image or Header */}
+                  {recipe.image_urls && recipe.image_urls.length > 0 ? (
+                    <div className="h-48 overflow-hidden relative">
+                      <img
+                        src={recipe.image_urls[0]}
+                        alt={recipe.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-3 left-3 flex items-center gap-2">
+                        <div className="px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-1">
+                          <MealIcon className="w-3.5 h-3.5 text-white" />
+                          <span className="text-xs font-medium text-white">{meta.label}</span>
+                        </div>
+                      </div>
+                      {recipe.scripture && (
+                        <div className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/90 dark:bg-gray-900/90 flex items-center justify-center">
+                          <BookOpen className="w-3.5 h-3.5 text-temple-purple dark:text-temple-gold" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
                   <div className="h-24 bg-gradient-to-br from-temple-purple to-temple-purple-dark dark:from-temple-gold dark:to-yellow-600 flex items-center justify-between px-5">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
@@ -189,6 +215,7 @@ export const Recipes = () => {
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* Recipe Content */}
                   <div className="p-6">

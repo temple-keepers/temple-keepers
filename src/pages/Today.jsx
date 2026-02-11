@@ -6,11 +6,12 @@ import { useEnrollment } from '../hooks/useEnrollment'
 import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../features/fasting/components/LiveSessionCard'
 import { useNextSession, useCohort } from '../features/fasting/hooks/useFasting'
-import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users, Sparkles, X } from 'lucide-react'
+import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users, Sparkles, X, Megaphone } from 'lucide-react'
 import { WeeklyThemeCard } from '../components/WeeklyThemeCard'
 import { StreakBadge } from '../components/StreakBadge'
 import { NotificationBell } from '../components/NotificationBell'
 import { notificationService } from '../services/notificationService'
+import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 
 export const Today = () => {
@@ -22,6 +23,7 @@ export const Today = () => {
   const [timeIcon, setTimeIcon] = useState(Sun)
   const [activePrograms, setActivePrograms] = useState([])
   const [dismissedBanner, setDismissedBanner] = useState(false)
+  const [announcements, setAnnouncements] = useState([])
   const navigate = useNavigate()
 
   // Detect fasting enrollment and get live session
@@ -45,9 +47,6 @@ export const Today = () => {
 
     // Defer reminder scheduling so it doesn't block initial paint
     const raf = requestAnimationFrame(() => {
-      const devTimer = notificationService.scheduleMorningReminder()
-      if (devTimer) timers.push(devTimer)
-
       if (fastingEnrollment?.fasting_window) {
         const fastTimers = notificationService.scheduleFastingReminders(fastingEnrollment.fasting_window)
         timers.push(...fastTimers)
@@ -74,6 +73,22 @@ export const Today = () => {
     }
   }, [])
 
+  // Fetch active announcements
+  useEffect(() => {
+    if (!user) return
+    const fetchAnnouncements = async () => {
+      const { data } = await supabase
+        .from('announcements')
+        .select('id, title, content, type, created_at')
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (data) setAnnouncements(data)
+    }
+    fetchAnnouncements()
+  }, [user])
+
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
@@ -93,6 +108,13 @@ export const Today = () => {
 
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
   const encouragement = encouragements[dayOfYear % encouragements.length]
+
+  const ANNOUNCEMENT_STYLES = {
+    general: { icon: Megaphone, bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', iconColor: 'text-blue-600 dark:text-blue-400' },
+    update: { icon: Sparkles, bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', iconColor: 'text-green-600 dark:text-green-400' },
+    event: { icon: Calendar, bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', iconColor: 'text-purple-600 dark:text-purple-400' },
+    tip: { icon: Heart, bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800', iconColor: 'text-amber-600 dark:text-amber-400' },
+  }
 
   // Check if user is enrolled in the Make Room program
   const isEnrolledInMakeRoom = activePrograms.some(
@@ -114,7 +136,7 @@ export const Today = () => {
         {/* Header with Logo and Controls */}
         <div className="flex items-center justify-between mb-6">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <img
               src="/logo.png"
               alt="Temple Keepers"
@@ -126,7 +148,7 @@ export const Today = () => {
           </div>
 
           {/* Navigation and Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {/* Quick Links - Desktop */}
             <button
               onClick={() => navigate('/wellness')}
@@ -179,32 +201,22 @@ export const Today = () => {
             {/* Notification Bell */}
             <NotificationBell />
 
-            {/* Theme Toggle */}
+            {/* Theme Toggle - icon only on mobile */}
             <button
               onClick={toggleTheme}
-              className="btn-secondary flex items-center gap-2 text-sm"
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle dark mode"
             >
-              {isDark ? (
-                <>
-                  <Sun className="w-4 h-4" />
-                  <span className="hidden sm:inline">Light</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Dark</span>
-                </>
-              )}
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            {/* Sign Out */}
+            {/* Sign Out - icon only on mobile */}
             <button
               onClick={handleSignOut}
-              className="btn-secondary flex items-center gap-2 text-sm"
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Sign out"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -328,20 +340,54 @@ export const Today = () => {
           </div>
         </div>
 
-        {/* Block 4: Temple Care Today */}
+        {/* Block 4: What's New */}
         <div className="summary-card animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
-            Temple Care Today
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Review your check-ins, meals, and symptoms in one place.
-          </p>
-          <button
-            onClick={() => navigate('/wellness')}
-            className="btn-secondary inline-flex items-center gap-2"
-          >
-            View Wellness History
-          </button>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-temple-purple/10 dark:bg-temple-gold/10 flex items-center justify-center">
+              <Megaphone className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+              What's New
+            </h2>
+          </div>
+
+          {announcements.length > 0 ? (
+            <div className="space-y-3">
+              {announcements.map((item) => {
+                const style = ANNOUNCEMENT_STYLES[item.type] || ANNOUNCEMENT_STYLES.general
+                const Icon = style.icon
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-xl p-4 border ${style.bg} ${style.border} transition-all`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <Icon className={`w-5 h-5 ${style.iconColor}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {item.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {item.content}
+                        </p>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 mt-2 block">
+                          {new Date(item.created_at).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+              No announcements right now. Check back soon!
+            </p>
+          )}
         </div>
 
         {/* Block 4: Active Programs */}
