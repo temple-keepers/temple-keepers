@@ -41,6 +41,7 @@ const AboutDenise = lazy(() => import('./pages/AboutDenise').then(m => ({ defaul
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Cookies = lazy(() => import('./pages/Cookies').then(m => ({ default: m.Cookies })))
+const UserGuide = lazy(() => import('./pages/UserGuide').then(m => ({ default: m.UserGuide })))
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })))
 const Shop = lazy(() => import('./pages/Shop').then(m => ({ default: m.Shop })))
 const ShopProduct = lazy(() => import('./pages/ShopProduct').then(m => ({ default: m.ShopProduct })))
@@ -128,6 +129,7 @@ function AppRoutes() {
       <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
       <Route path="/cookies" element={<Suspense fallback={<PageLoader />}><Cookies /></Suspense>} />
+      <Route path="/guide" element={<Suspense fallback={<PageLoader />}><UserGuide /></Suspense>} />
 
       {/* Auth */}
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

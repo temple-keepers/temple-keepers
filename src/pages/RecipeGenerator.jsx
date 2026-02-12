@@ -77,7 +77,8 @@ export const RecipeGenerator = () => {
         cookingTime,
         servings,
         includeIngredients: parseIngredientList(includeIngredients),
-        excludeIngredients: parseIngredientList(excludeIngredients)
+        excludeIngredients: parseIngredientList(excludeIngredients),
+        previousRecipeTitles: results.map(r => r.title)
       })
 
       if (success) {

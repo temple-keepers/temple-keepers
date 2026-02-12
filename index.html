@@ -33,40 +33,8 @@
 
     <title>Temple Keepers - Daily Wellness Companion</title>
     
-    <style>
-      /* Splash screen while app loads */
-      #splash-screen {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: linear-gradient(135deg, #6B21A8 0%, #4C1D95 50%, #581C87 100%);
-        z-index: 9999;
-        transition: opacity 0.3s ease-out;
-      }
-      #splash-screen.hidden {
-        opacity: 0;
-        pointer-events: none;
-      }
-      #splash-screen img {
-        width: 80px;
-        height: 80px;
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-      #splash-screen p {
-        color: rgba(255,255,255,0.9);
-        font-family: 'Playfair Display', serif;
-        font-size: 1.25rem;
-        margin-top: 1rem;
-        letter-spacing: 0.05em;
-      }
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-      }
-    </style>
+    <!-- Splash screen styles (loaded before JS for instant display) -->
+    <link rel="stylesheet" href="/splash.css" />
   </head>
   <body>
     <!-- Splash screen shown while JS loads -->

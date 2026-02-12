@@ -9,7 +9,8 @@ export const generateRecipe = async ({
   cookingTime = 30,
   servings = 4,
   includeIngredients = [],
-  excludeIngredients = []
+  excludeIngredients = [],
+  previousRecipeTitles = []
 }) => {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
@@ -26,8 +27,12 @@ export const generateRecipe = async ({
       ? excludeIngredients.join(', ')
       : 'none specified'
 
+    const avoidDuplicatesText = previousRecipeTitles.length > 0
+      ? `\n\nIMPORTANT: Do NOT create any of these recipes (already generated): ${previousRecipeTitles.map(t => `"${t}"`).join(', ')}. Create something COMPLETELY DIFFERENT with a different name, different main ingredients, and a different cooking style.\n`
+      : ''
+
     const prompt = `
-Create a healthy, delicious ${mealType} recipe with the following parameters:
+Create a healthy, delicious ${mealType} recipe with the following parameters:${avoidDuplicatesText}
 - Cuisine: ${cuisine}
 - Dietary restrictions: ${dietaryText}
 - Must include: ${includeText}
@@ -297,6 +302,49 @@ export const generateRecipeImage = async (recipeId, title, description, mealType
   } catch (error) {
     console.error('Image generation error:', error)
     return { success: false, error: error.message }
+  }
+}
+
+export const scaleIngredients = async (ingredients, originalServings, targetServings) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+
+    const prompt = `
+You are a professional chef. Adjust these recipe ingredients from ${originalServings} servings to ${targetServings} servings.
+
+Rules:
+- Use practical, real-world cooking amounts that a home cook would actually measure.
+- Countable items (cloves, eggs, cans, onions, peppers) must be whole numbers. Round to the nearest sensible whole number (minimum 1).
+- For measurable amounts (teaspoons, tablespoons, cups, pounds, ounces, grams, ml), use common kitchen-friendly quantities: ¼, ⅓, ½, ⅔, ¾, or whole numbers.
+- If the original uses 1 can and the target is fewer servings, keep 1 can — don't use "0.5 can".
+- "or to taste" items (salt, pepper, spices) should stay the same or adjust minimally — cooks will season to taste anyway.
+- Keep the same unit system as the original (don't convert pounds to grams, etc).
+
+Original ingredients (${originalServings} servings):
+${JSON.stringify(ingredients)}
+
+Return ONLY a valid JSON array with the same structure:
+[{"item":"...","amount":"...","unit":"..."}]
+
+The "amount" field should be a display-ready string like "½", "1 ½", "¼", "2", etc.
+Return ONLY valid JSON, no markdown formatting, no explanations.
+`
+
+    const result = await model.generateContent(prompt)
+    const response = result.response.text()
+
+    let cleaned = response.trim()
+    cleaned = cleaned.replace(/```json\s*/g, '')
+    cleaned = cleaned.replace(/```\s*/g, '')
+    cleaned = cleaned.trim()
+
+    const scaled = JSON.parse(cleaned)
+
+    if (!Array.isArray(scaled) || scaled.length === 0) return null
+    return scaled
+  } catch (error) {
+    console.error('Ingredient scaling error:', error)
+    return null
   }
 }
 

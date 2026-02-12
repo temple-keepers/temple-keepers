@@ -113,6 +113,7 @@ export const Landing = () => {
                 { label: 'Features', href: '#features' },
                 { label: 'Programs', href: '#programs' },
                 { label: 'About Denise', action: () => navigate('/about-denise') },
+                { label: 'User Guide', action: () => navigate('/guide') },
                 { label: 'Roadmap', action: () => navigate('/roadmap') },
               ].map(item => (
                 <a

@@ -1,20 +1,20 @@
-const CACHE_NAME = 'temple-keepers-v3'
+const CACHE_NAME = 'temple-keepers-v4'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
+  '/splash.css',
   '/logo.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png'
 ]
 
-// Install — cache static assets, but do NOT skipWaiting
-// The new SW waits until the user chooses to update
+// Install — cache static assets and activate immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(STATIC_ASSETS))
   )
-  // NOT calling self.skipWaiting() — we wait for the user to accept the update
+  self.skipWaiting()
 })
 
 // Activate — clean old caches, then claim clients
