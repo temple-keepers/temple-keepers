@@ -100,6 +100,12 @@ const PublicRoute = ({ children }) => {
   return children
 }
 
+const HomeRoute = ({ children }) => {
+  const { user, loading } = useAuth()
+  if (!loading && user) return <Navigate to="/today" replace />
+  return children
+}
+
 const AdminRoute = ({ children }) => {
   const { user, profile, loading } = useAuth()
   if (loading) return <LoadingSpinner />
@@ -122,7 +128,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Landing & legal (lazy except landing) */}
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<HomeRoute><Landing /></HomeRoute>} />
       <Route path="/roadmap" element={<Suspense fallback={<PageLoader />}><Roadmap /></Suspense>} />
       <Route path="/about" element={<Landing />} />
       <Route path="/about-denise" element={<Suspense fallback={<PageLoader />}><AboutDenise /></Suspense>} />

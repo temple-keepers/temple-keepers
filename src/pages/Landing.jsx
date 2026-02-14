@@ -84,9 +84,9 @@ export const Landing = () => {
             <a href="#about" className="text-sm text-gray-400 hover:text-temple-gold transition-colors">About</a>
             <button
               onClick={() => navigate('/login')}
-              className="text-sm font-medium text-gray-300 hover:text-white transition-colors"
+              className="px-5 py-2.5 rounded-full text-sm font-semibold border border-temple-gold/50 text-temple-gold hover:bg-temple-gold/10 hover:border-temple-gold transition-all"
             >
-              Sign In
+              Members Login
             </button>
             <button
               onClick={() => navigate('/signup')}
@@ -130,8 +130,8 @@ export const Landing = () => {
               ))}
               <div className="flex gap-3 pt-3">
                 <button onClick={() => { navigate('/login'); setMobileMenuOpen(false) }}
-                  className="flex-1 py-3 rounded-xl border border-white/10 text-center text-sm font-medium text-gray-300 hover:bg-white/5">
-                  Sign In
+                  className="flex-1 py-3 rounded-xl border border-temple-gold/50 text-center text-sm font-semibold text-temple-gold hover:bg-temple-gold/10">
+                  Members Login
                 </button>
                 <button onClick={() => { navigate('/signup'); setMobileMenuOpen(false) }}
                   className="flex-1 py-3 rounded-xl bg-gradient-to-r from-temple-purple to-temple-gold text-center text-sm font-semibold text-white">
@@ -198,6 +198,17 @@ export const Landing = () => {
               See What's Inside
             </button>
           </div>
+
+          {/* Member login prompt */}
+          <p className="text-sm text-gray-500 mb-8">
+            Already a member?{' '}
+            <button
+              onClick={() => navigate('/login')}
+              className="text-temple-gold hover:text-temple-gold-light font-semibold underline underline-offset-2 transition-colors"
+            >
+              Log in to your dashboard
+            </button>
+          </p>
 
           {/* Social Proof */}
           <div className="flex items-center justify-center gap-6 text-sm text-gray-500">

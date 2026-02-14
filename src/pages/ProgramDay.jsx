@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useEnrollment } from '../hooks/useEnrollment'
-import { FastingTracker } from '../features/fasting/components/FastingTracker'
+import { FastingTracker } from '../components/fasting/FastingTracker'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { ArrowLeft, ArrowRight, Check, BookOpen } from 'lucide-react'
-import { ChangeFastingType } from '../features/fasting/components/ChangeFastingType'
+import { ChangeFastingType } from '../components/fasting/ChangeFastingType'
 import { ghlService } from '../services/ghlService'
 import { emailService } from '../services/emailService'
 
@@ -506,7 +506,7 @@ export const ProgramDay = () => {
             )}
             <button
               onClick={() => {
-                const msg = `✅ Day ${currentDayNum} of "${program?.title || 'my programme'}" complete on Temple Keepers!\n\nFaith-based wellness, one day at a time. 💪🙏\n\nJoin the journey: https://templekeepers.app/signup`
+                const msg = `Day ${currentDayNum} of "${program?.title || 'my programme'}" complete on Temple Keepers!\n\nFaith-based wellness, one day at a time.\n\nJoin the journey: https://templekeepers.app/signup`
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
               }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white text-sm font-semibold transition-colors mt-2"

@@ -1,14 +1,47 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { supabase } from './supabase'
 
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY)
+/**
+ * Call the server-side Gemini AI edge function (admin programme content).
+ * API key is kept server-side — never exposed to the browser.
+ */
+async function callGeminiAdmin(prompt) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    throw new Error('Not authenticated')
+  }
+
+  const res = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-ai`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ action: 'raw-prompt', params: { prompt, model: 'gemini-2.0-flash' } }),
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `AI request failed: ${res.status}`)
+  }
+
+  const result = await res.json()
+  if (!result.success) throw new Error(result.error || 'AI generation failed')
+  return result.data
+}
+
+function cleanJson(text) {
+  return text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+}
 
 /**
  * Generate Scripture suggestions based on day theme
  */
 export const generateScriptureSuggestions = async ({ dayNumber, title, theme, programType }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-
     const prompt = `You are a pastoral content assistant for Temple Keepers, a Christian wellness platform.
 
 PROGRAM TYPE: ${programType}
@@ -32,34 +65,20 @@ Return ONLY valid JSON (no markdown, no backticks):
   ]
 }`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
-    
-    // Clean and parse response
-    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed = JSON.parse(cleanText)
-    
-    return {
-      success: true,
-      data: parsed.suggestions
-    }
+    const text = await callGeminiAdmin(prompt)
+    const parsed = JSON.parse(cleanJson(typeof text === 'string' ? text : JSON.stringify(text)))
+    return { success: true, data: parsed.suggestions || parsed }
   } catch (error) {
     console.error('Error generating scripture:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }
 
 /**
- * Generate Focus Thought (2-4 lines explaining why today matters)
+ * Generate Focus Thought
  */
 export const generateFocusThought = async ({ scripture, title, theme }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-
     const prompt = `Generate a 2-4 line "Focus Thought" for a Christian wellness program day.
 
 THEME: ${title}
@@ -74,20 +93,11 @@ Guidelines:
 
 Return ONLY the focus thought text (no JSON, no formatting).`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text().trim()
-    
-    return {
-      success: true,
-      data: text
-    }
+    const text = await callGeminiAdmin(prompt)
+    return { success: true, data: typeof text === 'string' ? text : text.toString() }
   } catch (error) {
     console.error('Error generating focus thought:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }
 
@@ -96,8 +106,6 @@ Return ONLY the focus thought text (no JSON, no formatting).`
  */
 export const generatePrayer = async ({ scripture, title, theme }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-
     const prompt = `Write a sincere, conversational prayer (4-6 lines) for a Christian wellness program day.
 
 THEME: ${title}
@@ -108,34 +116,22 @@ Guidelines:
 - Honest and accessible (not flowery or overly religious)
 - Addresses God directly ("Father," "Lord," "Jesus")
 - Connects to today's theme
-- Removes hesitation for people who don't know how to pray
 
 Return ONLY the prayer text (no JSON, no formatting).`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text().trim()
-    
-    return {
-      success: true,
-      data: text
-    }
+    const text = await callGeminiAdmin(prompt)
+    return { success: true, data: typeof text === 'string' ? text : text.toString() }
   } catch (error) {
     console.error('Error generating prayer:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }
 
 /**
- * Generate Reflection Questions (1-2 heart-level questions)
+ * Generate Reflection Questions
  */
 export const generateReflectionQuestions = async ({ scripture, title, theme, actionStep }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-
     const prompt = `Create 1-2 heart-level reflection questions for a Christian wellness program day.
 
 THEME: ${title}
@@ -146,32 +142,16 @@ Guidelines:
 - Questions that require introspection (not yes/no)
 - Safe to answer honestly
 - Connect Scripture to personal life
-- Transformation-focused, not just information
-- Examples:
-  GOOD: "What lie have you believed that God wants to replace with truth?"
-  BAD: "Do you believe God's promises?" (too surface, yes/no)
 
 Return ONLY valid JSON array (no markdown, no backticks):
 ["Question 1 here", "Question 2 here"]`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text()
-    
-    // Clean and parse response
-    const cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    const parsed = JSON.parse(cleanText)
-    
-    return {
-      success: true,
-      data: Array.isArray(parsed) ? parsed : [parsed]
-    }
+    const text = await callGeminiAdmin(prompt)
+    const parsed = JSON.parse(cleanJson(typeof text === 'string' ? text : JSON.stringify(text)))
+    return { success: true, data: Array.isArray(parsed) ? parsed : [parsed] }
   } catch (error) {
     console.error('Error generating reflection questions:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }
 
@@ -180,8 +160,6 @@ Return ONLY valid JSON array (no markdown, no backticks):
  */
 export const generateActionStep = async ({ scripture, title, theme }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-
     const prompt = `Suggest one small, doable action step for a Christian wellness program day.
 
 THEME: ${title}
@@ -191,29 +169,14 @@ Guidelines:
 - Clear and specific (not vague)
 - Completable in 5-15 minutes
 - Connects spiritual truth to daily life
-- Not overwhelming
-- Actionable today
-
-Examples:
-GOOD: "Write down one lie you've believed and replace it with God's truth"
-BAD: "Spend time with God today" (too vague)
 
 Return ONLY the action step text (no JSON, no formatting).`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text().trim()
-    
-    return {
-      success: true,
-      data: text
-    }
+    const text = await callGeminiAdmin(prompt)
+    return { success: true, data: typeof text === 'string' ? text : text.toString() }
   } catch (error) {
     console.error('Error generating action step:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }
 
@@ -222,8 +185,6 @@ Return ONLY the action step text (no JSON, no formatting).`
  */
 export const generateCompletionMessage = async ({ title }) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' })
-
     const prompt = `Write a warm, encouraging completion message (1-2 sentences) for someone who just finished a day in a Christian wellness program.
 
 DAY THEME: ${title}
@@ -231,44 +192,31 @@ DAY THEME: ${title}
 Guidelines:
 - Warm and affirming
 - Grace-based (not performance-based)
-- Acknowledges their obedience
-- Points to God's faithfulness
 - 1-2 sentences
 
 Return ONLY the message text (no JSON, no formatting).`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const text = response.text().trim()
-    
-    return {
-      success: true,
-      data: text
-    }
+    const text = await callGeminiAdmin(prompt)
+    return { success: true, data: typeof text === 'string' ? text : text.toString() }
   } catch (error) {
     console.error('Error generating completion message:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }
 
 /**
- * Generate entire day content at once (optional batch generation)
+ * Generate entire day content at once
  */
 export const generateFullDayContent = async ({ dayNumber, title, theme, programType, includesFasting }) => {
   try {
-    // Generate scripture first
     const scriptureResult = await generateScriptureSuggestions({ dayNumber, title, theme, programType })
     
     if (!scriptureResult.success || !scriptureResult.data.length) {
       throw new Error('Failed to generate scripture')
     }
 
-    const scripture = scriptureResult.data[0] // Use first suggestion
+    const scripture = scriptureResult.data[0]
     
-    // Generate other sections in parallel
     const [focusThought, prayer, reflectionQuestions, actionStep, completionMessage] = await Promise.all([
       generateFocusThought({ scripture: scripture.text, title, theme }),
       generatePrayer({ scripture: scripture.text, title, theme }),
@@ -287,14 +235,11 @@ export const generateFullDayContent = async ({ dayNumber, title, theme, programT
         reflection_questions: reflectionQuestions.success ? reflectionQuestions.data : [],
         action_step: actionStep.success ? actionStep.data : '',
         completion_message: completionMessage.success ? completionMessage.data : '',
-        fasting_reminder: includesFasting ? 'Remember your fast today. Stay hydrated and trust in God\'s strength.' : ''
+        fasting_reminder: includesFasting ? "Remember your fast today. Stay hydrated and trust in God's strength." : ''
       }
     }
   } catch (error) {
     console.error('Error generating full day content:', error)
-    return {
-      success: false,
-      error: error.message
-    }
+    return { success: false, error: error.message }
   }
 }

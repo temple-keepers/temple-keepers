@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { podService } from '../features/pods/services/podService'
+import { podService } from '../services/podService'
 import { supabase } from '../lib/supabase'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'

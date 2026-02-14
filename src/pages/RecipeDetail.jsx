@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRecipes } from '../hooks/useRecipes'
-import { mealPlanService } from '../features/mealplans/services/mealPlanService'
+import { mealPlanService } from '../services/mealPlanService'
 import { scaleIngredients } from '../lib/recipeAI'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
@@ -258,7 +258,7 @@ export const RecipeDetail = () => {
           <div className="flex items-center gap-2 ml-4">
             <button
               onClick={() => {
-                const msg = `🍽️ Check out this healthy recipe on Temple Keepers:\n\n*${recipe.title}*\n${recipe.description ? `\n${recipe.description.slice(0, 100)}...` : ''}\n\nEvery recipe comes with scripture, nutrition info & healthy ingredient swaps 🙌\n\nhttps://templekeepers.app/signup`
+                const msg = `Check out this healthy recipe on Temple Keepers:\n\n*${recipe.title}*\n${recipe.description ? `\n${recipe.description.slice(0, 100)}...` : ''}\n\nEvery recipe comes with scripture, nutrition info & healthy ingredient swaps.\n\nhttps://templekeepers.app/signup`
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
               }}
               className="p-3 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors flex-shrink-0"

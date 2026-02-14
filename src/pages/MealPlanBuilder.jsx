@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { mealPlanService } from '../features/mealplans/services/mealPlanService'
+import { mealPlanService } from '../services/mealPlanService'
 import { supabase } from '../lib/supabase'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'

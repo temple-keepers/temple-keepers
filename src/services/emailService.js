@@ -5,15 +5,22 @@ const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sen
 /**
  * Send an email via the Resend Edge Function.
  * Fires and forgets — never blocks the UI.
+ * Authenticated via user JWT.
  */
 async function sendEmailEvent(template, data) {
   try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+    }
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+
     const res = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      },
+      headers,
       body: JSON.stringify({ template, data }),
     })
 

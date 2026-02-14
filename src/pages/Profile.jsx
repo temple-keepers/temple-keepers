@@ -694,7 +694,7 @@ export const Profile = () => {
                 {/* WhatsApp Invite Button */}
                 <button
                   onClick={() => {
-                    const msg = `Hey! 👋 I've been using Temple Keepers — a free faith-based wellness app with daily scripture, healthy recipes, and community support.\n\nI thought you might enjoy it!\n\n🙏 Daily devotionals\n🍽️ AI-powered healthy recipes\n💪 Guided programmes\n👥 Community pods\n\nJoin free: ${referralCode ? referralService.getShareUrl(referralCode) : 'https://templekeepers.app/signup'}`
+                    const msg = `Hey! I've been using Temple Keepers - a faith-based wellness app with daily scripture, healthy recipes, and community support.\n\nI thought you might enjoy it!\n\n- Daily devotionals\n- AI-powered healthy recipes\n- Guided programmes & challenges\n- Community accountability pods\n\nJoin free: ${referralCode ? referralService.getShareUrl(referralCode) : 'https://templekeepers.app/signup'}`
                     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
                   }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white text-sm font-semibold transition-colors"
