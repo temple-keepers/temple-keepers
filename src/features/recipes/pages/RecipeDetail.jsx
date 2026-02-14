@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useRecipes } from '../hooks/useRecipes'
-import { scaleIngredients } from '../../../lib/recipeAI'
 import { AppHeader } from '../components/AppHeader'
 import { ArrowLeft, Clock, Users, Heart, BookOpen, ChefHat } from 'lucide-react'
 
@@ -15,35 +14,6 @@ export const RecipeDetail = () => {
   const [favorited, setFavorited] = useState(false)
   const [servings, setServings] = useState(4) // Adjusted servings
   const [originalServings, setOriginalServings] = useState(4) // Original from recipe
-
-  // AI-powered ingredient scaling
-  const [aiIngredients, setAiIngredients] = useState(null)
-  const [aiScaling, setAiScaling] = useState(false)
-  const aiCacheRef = useRef({})
-
-  useEffect(() => {
-    if (!recipe || servings === originalServings) {
-      setAiIngredients(null)
-      setAiScaling(false)
-      return
-    }
-    if (aiCacheRef.current[servings]) {
-      setAiIngredients(aiCacheRef.current[servings])
-      return
-    }
-    setAiScaling(true)
-    const timer = setTimeout(() => {
-      scaleIngredients(recipe.ingredients, originalServings, servings)
-        .then(scaled => {
-          if (scaled) {
-            aiCacheRef.current[servings] = scaled
-            setAiIngredients(scaled)
-          }
-        })
-        .finally(() => setAiScaling(false))
-    }, 600)
-    return () => clearTimeout(timer)
-  }, [servings, originalServings, recipe])
 
   useEffect(() => {
     loadRecipe()
@@ -78,58 +48,21 @@ export const RecipeDetail = () => {
     }
   }
 
-  // Convert a decimal to the nearest kitchen-friendly fraction
-  const toKitchenFraction = (value) => {
-    if (value <= 0) return '0'
-
-    const whole = Math.floor(value)
-    const frac = value - whole
-
-    const fractions = [
-      { d: 0,     s: '' },
-      { d: 0.125, s: '⅛' },
-      { d: 0.25,  s: '¼' },
-      { d: 0.333, s: '⅓' },
-      { d: 0.5,   s: '½' },
-      { d: 0.667, s: '⅔' },
-      { d: 0.75,  s: '¾' },
-      { d: 1,     s: '' },
-    ]
-
-    let closest = fractions[0]
-    let minDiff = Infinity
-    for (const f of fractions) {
-      const diff = Math.abs(frac - f.d)
-      if (diff < minDiff) { minDiff = diff; closest = f }
-    }
-
-    let w = whole + (closest.d === 1 ? 1 : 0)
-    const fs = closest.d === 1 ? '' : closest.s
-
-    if (w === 0 && fs) return fs
-    if (w > 0 && fs) return `${w} ${fs}`
-    return w.toString()
-  }
-
-  // Calculate adjusted ingredient amounts with kitchen-friendly output
-  const adjustIngredientAmount = (amount, unit = '') => {
+  // Calculate adjusted ingredient amounts
+  const adjustIngredientAmount = (amount) => {
     if (!amount || isNaN(parseFloat(amount))) return amount
-
+    
     const multiplier = servings / originalServings
     const adjusted = parseFloat(amount) * multiplier
-
-    // Countable / whole items — round to nearest whole number (min 1)
-    const isWholeItem = /\b(medium|large|small|cloves?|whole|cans?|heads?|bunch|bunches|stalks?|sprigs?|slices?|pieces?|fillets?|breasts?|thighs?|drumsticks?|eggs?|links?|sheets?|leaves|leaf)\b/i.test(unit)
-
-    if (isWholeItem) {
-      return Math.max(1, Math.round(adjusted)).toString()
+    
+    // Round to reasonable precision
+    if (adjusted < 1) {
+      return adjusted.toFixed(2).replace(/\.?0+$/, '')
+    } else if (adjusted < 10) {
+      return adjusted.toFixed(1).replace(/\.?0+$/, '')
+    } else {
+      return Math.round(adjusted).toString()
     }
-
-    // Large values (>10): round to whole number
-    if (adjusted >= 10) return Math.round(adjusted).toString()
-
-    // Use kitchen-friendly fractions for measurable amounts
-    return toKitchenFraction(adjusted)
   }
 
   // Calculate adjusted nutrition
@@ -233,18 +166,17 @@ export const RecipeDetail = () => {
                 <p className="text-sm text-blue-600 dark:text-blue-400 mb-3 flex items-center gap-1">
                   <span>✓</span>
                   <span>Adjusted for {servings} servings</span>
-                  {aiScaling && <span className="ml-1 w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />}
                 </p>
               )}
               <ul className="space-y-2">
-                {(aiIngredients || recipe.ingredients).map((ingredient, index) => (
+                {recipe.ingredients.map((ingredient, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-temple-purple/10 dark:bg-temple-gold/10 flex items-center justify-center text-xs font-semibold text-temple-purple dark:text-temple-gold">
                       {index + 1}
                     </span>
                     <span className="flex-1 text-gray-700 dark:text-gray-300">
                       <span className="font-semibold">
-                        {aiIngredients ? ingredient.amount : adjustIngredientAmount(ingredient.amount, ingredient.unit)} {ingredient.unit}
+                        {adjustIngredientAmount(ingredient.amount)} {ingredient.unit}
                       </span> {ingredient.item}
                     </span>
                   </li>

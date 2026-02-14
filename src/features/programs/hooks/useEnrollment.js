@@ -51,7 +51,7 @@ export const useEnrollment = () => {
       .eq('user_id', user.id)
       .eq('program_id', programId)
       .eq('status', 'active')
-      .maybeSingle()
+      .single()
 
     return { data, error }
   }

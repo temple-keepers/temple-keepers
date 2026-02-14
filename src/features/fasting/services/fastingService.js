@@ -41,9 +41,10 @@ export const fastingService = {
       .gte('session_date', now)
       .order('session_date', { ascending: true })
       .limit(1)
-      .maybeSingle()
+      .single()
     
     if (error) {
+      if (error.code === 'PGRST116') return null // No rows
       throw error
     }
     return data
@@ -69,9 +70,10 @@ export const fastingService = {
       .eq('user_id', userId)
       .eq('enrollment_id', enrollmentId)
       .eq('log_date', date)
-      .maybeSingle()
+      .single()
     
     if (error) {
+      if (error.code === 'PGRST116') return null // No rows
       throw error
     }
     return data
