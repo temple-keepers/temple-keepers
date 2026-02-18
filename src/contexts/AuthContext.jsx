@@ -19,7 +19,15 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn('Session retrieval failed, clearing auth:', error.message)
+        supabase.auth.signOut()
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
+        return
+      }
       setUser(session?.user ?? null)
       if (session?.user) {
         loadProfile(session.user.id)
@@ -29,7 +37,18 @@ export const AuthProvider = ({ children }) => {
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // If token refresh fails, sign user out cleanly
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        console.warn('Token refresh failed, signing out')
+        supabase.auth.signOut()
+        setUser(null)
+        setProfile(null)
+        setPinLocked(false)
+        setLoading(false)
+        return
+      }
+
       setUser(session?.user ?? null)
       if (session?.user) {
         loadProfile(session.user.id)
@@ -109,6 +128,18 @@ export const AuthProvider = ({ children }) => {
     return { data, error }
   }
 
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    return { error }
+  }
+
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    return { error }
+  }
+
   const signOut = async () => {
     if (user) {
       sessionStorage.removeItem(`tk-pin-unlocked-${user.id}`)
@@ -130,7 +161,9 @@ export const AuthProvider = ({ children }) => {
     unlockPin,
     signUp,
     signIn,
-    signOut
+    signOut,
+    resetPassword,
+    updatePassword
   }
 
   return (

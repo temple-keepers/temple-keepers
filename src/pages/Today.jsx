@@ -6,7 +6,7 @@ import { useEnrollment } from '../hooks/useEnrollment'
 import { BottomNav } from '../components/BottomNav'
 import { LiveSessionCard } from '../components/fasting/LiveSessionCard'
 import { useNextSession, useCohort } from '../hooks/useFasting'
-import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users, Sparkles, X, Megaphone } from 'lucide-react'
+import { Sun, Moon, BookOpen, Heart, UtensilsCrossed, LogOut, Calendar, ArrowRight, Plus, ChefHat, User, AlertCircle, ClipboardList, Users, Sparkles, X, Megaphone, Award, Utensils, Activity, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { WeeklyThemeCard } from '../components/WeeklyThemeCard'
 import { StreakBadge } from '../components/StreakBadge'
 import { NotificationBell } from '../components/NotificationBell'
@@ -23,8 +23,11 @@ export const Today = () => {
   const [timeIcon, setTimeIcon] = useState(Sun)
   const [activePrograms, setActivePrograms] = useState([])
   const [dismissedBanner, setDismissedBanner] = useState(false)
-  const [announcements, setAnnouncements] = useState([])
+  const [activityFeed, setActivityFeed] = useState([])
+  const [feedLoading, setFeedLoading] = useState(true)
   const navigate = useNavigate()
+  const [showFeatureTour, setShowFeatureTour] = useState(false)
+  const [tourSlide, setTourSlide] = useState(0)
 
   // Detect fasting enrollment and get live session
   const fastingEnrollment = activePrograms.find(e => e.cohort_id)
@@ -73,20 +76,105 @@ export const Today = () => {
     }
   }, [])
 
-  // Fetch active announcements
+  // Fetch activity feed (announcements + new programs + recent recipes + badges)
   useEffect(() => {
     if (!user) return
-    const fetchAnnouncements = async () => {
-      const { data } = await supabase
-        .from('announcements')
-        .select('id, title, content, type, created_at')
-        .eq('is_active', true)
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(5)
-      if (data) setAnnouncements(data)
+    const fetchFeed = async () => {
+      setFeedLoading(true)
+      // Only show today's activity
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayISO = todayStart.toISOString()
+
+      const [announcementsRes, programsRes, recipesRes, badgesRes] = await Promise.all([
+        supabase
+          .from('announcements')
+          .select('id, title, content, type, created_at')
+          .eq('is_active', true)
+          .gte('created_at', todayISO)
+          .order('priority', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('programs')
+          .select('id, title, slug, description, category, cover_image_url, created_at')
+          .eq('is_published', true)
+          .gte('created_at', todayISO)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('recipes')
+          .select('id, title, meal_type, cuisine, created_at')
+          .eq('created_by', user.id)
+          .gte('created_at', todayISO)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('user_badges')
+          .select('id, earned_at, badges(name, icon, description)')
+          .eq('user_id', user.id)
+          .gte('earned_at', todayISO)
+          .order('earned_at', { ascending: false })
+          .limit(5),
+      ])
+
+      const items = []
+
+      // Announcements
+      if (announcementsRes.data) {
+        announcementsRes.data.forEach(a => items.push({
+          id: `ann-${a.id}`,
+          type: 'announcement',
+          subType: a.type,
+          title: a.title,
+          description: a.content,
+          date: a.created_at,
+        }))
+      }
+
+      // New programs
+      if (programsRes.data) {
+        programsRes.data.forEach(p => items.push({
+          id: `prog-${p.id}`,
+          type: 'new_program',
+          title: p.title,
+          description: p.description?.slice(0, 100) + (p.description?.length > 100 ? '...' : ''),
+          date: p.created_at,
+          action: () => navigate(`/programs/${p.slug}`),
+        }))
+      }
+
+      // Recent recipes
+      if (recipesRes.data) {
+        recipesRes.data.forEach(r => items.push({
+          id: `recipe-${r.id}`,
+          type: 'recipe',
+          title: r.title,
+          description: `${r.cuisine !== 'any' ? r.cuisine + ' ' : ''}${r.meal_type} recipe`,
+          date: r.created_at,
+          action: () => navigate(`/recipes/${r.id}`),
+        }))
+      }
+
+      // Earned badges
+      if (badgesRes.data) {
+        badgesRes.data.forEach(b => items.push({
+          id: `badge-${b.id}`,
+          type: 'badge',
+          title: `Earned: ${b.badges?.name || 'Badge'}`,
+          description: b.badges?.description || '',
+          date: b.earned_at,
+          icon: b.badges?.icon,
+          action: () => navigate('/achievements'),
+        }))
+      }
+
+      // Sort by date descending and limit
+      items.sort((a, b) => new Date(b.date) - new Date(a.date))
+      setActivityFeed(items.slice(0, 12))
+      setFeedLoading(false)
     }
-    fetchAnnouncements()
+    fetchFeed()
   }, [user])
 
   const handleSignOut = async () => {
@@ -109,11 +197,36 @@ export const Today = () => {
   const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
   const encouragement = encouragements[dayOfYear % encouragements.length]
 
-  const ANNOUNCEMENT_STYLES = {
-    general: { icon: Megaphone, bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', iconColor: 'text-blue-600 dark:text-blue-400' },
-    update: { icon: Sparkles, bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', iconColor: 'text-green-600 dark:text-green-400' },
-    event: { icon: Calendar, bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', iconColor: 'text-purple-600 dark:text-purple-400' },
-    tip: { icon: Heart, bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800', iconColor: 'text-amber-600 dark:text-amber-400' },
+  const FEED_STYLES = {
+    // Announcement sub-types
+    general: { icon: Megaphone, label: 'Announcement', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', iconColor: 'text-blue-600 dark:text-blue-400', dot: 'bg-blue-500' },
+    update: { icon: Sparkles, label: 'Update', bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', iconColor: 'text-green-600 dark:text-green-400', dot: 'bg-green-500' },
+    event: { icon: Calendar, label: 'Event', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', iconColor: 'text-purple-600 dark:text-purple-400', dot: 'bg-purple-500' },
+    tip: { icon: Heart, label: 'Tip', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800', iconColor: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-500' },
+    // Feed item types
+    new_program: { icon: Calendar, label: 'New Program', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', iconColor: 'text-purple-600 dark:text-purple-400', dot: 'bg-purple-500' },
+    recipe: { icon: Utensils, label: 'Recipe Saved', bg: 'bg-orange-50 dark:bg-orange-900/20', border: 'border-orange-200 dark:border-orange-800', iconColor: 'text-orange-600 dark:text-orange-400', dot: 'bg-orange-500' },
+    badge: { icon: Award, label: 'Achievement', bg: 'bg-yellow-50 dark:bg-yellow-900/20', border: 'border-yellow-200 dark:border-yellow-800', iconColor: 'text-yellow-600 dark:text-yellow-400', dot: 'bg-yellow-500' },
+  }
+
+  const getFeedStyle = (item) => {
+    if (item.type === 'announcement') return FEED_STYLES[item.subType] || FEED_STYLES.general
+    return FEED_STYLES[item.type] || FEED_STYLES.general
+  }
+
+  const formatFeedDate = (dateStr) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now - date
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   }
 
   // Check if user is enrolled in the Make Room program
@@ -123,6 +236,74 @@ export const Today = () => {
 
   // Check if banner was previously dismissed this session
   const showJoinBanner = !isEnrolledInMakeRoom && !dismissedBanner && activePrograms !== null
+
+  // Feature tour slides
+  const TOUR_SLIDES = [
+    {
+      emoji: '📖',
+      title: 'Daily Devotionals',
+      description: 'Start each day with AI-personalised scripture, prayer, and reflection — designed to connect your faith with your wellness journey.',
+      action: () => navigate('/today'),
+      actionLabel: 'View Today\'s Devotional',
+      gradient: 'from-purple-500 to-indigo-600',
+    },
+    {
+      emoji: '🍽️',
+      title: 'AI Recipe Generator',
+      description: 'Generate healthy recipes tailored to your dietary needs and preferences. Every recipe includes scripture inspiration, nutrition info, and healthy swaps.',
+      action: () => navigate('/recipes'),
+      actionLabel: 'Browse Recipes',
+      gradient: 'from-orange-500 to-red-500',
+    },
+    {
+      emoji: '📋',
+      title: 'Meal Plans & Shopping Lists',
+      description: 'Plan your meals for the week, auto-generate shopping lists, and stay on track with your nutrition goals.',
+      action: () => navigate('/meal-plans'),
+      actionLabel: 'View Meal Plans',
+      gradient: 'from-green-500 to-emerald-600',
+    },
+    {
+      emoji: '🙏',
+      title: 'Guided Programmes',
+      description: 'Join structured programmes like fasting journeys, wellness challenges, and emotional healing courses — each with daily content and progress tracking.',
+      action: () => navigate('/programs'),
+      actionLabel: 'Explore Programmes',
+      gradient: 'from-temple-purple to-purple-700',
+    },
+    {
+      emoji: '💚',
+      title: 'Wellness Tracking',
+      description: 'Log daily check-ins, track meals with AI nutrition estimates, monitor symptoms and spot patterns, and track your water intake.',
+      action: () => navigate('/wellness'),
+      actionLabel: 'Go to Wellness Hub',
+      gradient: 'from-teal-500 to-cyan-600',
+    },
+    {
+      emoji: '👥',
+      title: 'Community & Accountability',
+      description: 'Join accountability pods, share your journey with like-minded believers, post prayer requests, and cheer each other on.',
+      action: () => navigate('/pods'),
+      actionLabel: 'Join a Pod',
+      gradient: 'from-blue-500 to-blue-700',
+    },
+    {
+      emoji: '🏆',
+      title: 'Achievements & Streaks',
+      description: 'Earn badges for completing programmes, maintaining streaks, and hitting wellness milestones. Stay motivated with visible progress!',
+      action: () => navigate('/achievements'),
+      actionLabel: 'View Achievements',
+      gradient: 'from-yellow-500 to-amber-600',
+    },
+    {
+      emoji: '👤',
+      title: 'Your Profile',
+      description: 'Set your dietary preferences, health goals, and wellness targets. Everything in Temple Keepers personalises to YOU.',
+      action: () => navigate('/profile'),
+      actionLabel: 'Edit Profile',
+      gradient: 'from-pink-500 to-rose-600',
+    },
+  ]
 
   // Show banner until end date of the cohort (Feb 22)
   const bannerEndDate = new Date('2026-02-22T23:59:59')
@@ -305,10 +486,19 @@ export const Today = () => {
 
         {/* Block 3: One Small Step (Actions) */}
         <div className="action-card animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-            One Small Step
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+              One Small Step
+            </h2>
+            <button
+              onClick={() => { setTourSlide(0); setShowFeatureTour(true) }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-temple-purple dark:text-temple-gold bg-temple-purple/10 dark:bg-temple-gold/10 hover:bg-temple-purple/20 dark:hover:bg-temple-gold/20 transition-colors"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              What can I do?
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <button
               onClick={() => navigate('/wellness/check-in')}
               className="btn-primary flex items-center justify-center gap-2"
@@ -324,6 +514,13 @@ export const Today = () => {
               <span>Log a Meal</span>
             </button>
             <button
+              onClick={() => navigate('/recipes')}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium text-sm transition-colors bg-orange-500 hover:bg-orange-600 text-white shadow-md"
+            >
+              <ChefHat className="w-5 h-5" />
+              <span>Recipes</span>
+            </button>
+            <button
               onClick={() => navigate('/meal-plans')}
               className="btn-secondary flex items-center justify-center gap-2"
             >
@@ -337,55 +534,89 @@ export const Today = () => {
               <AlertCircle className="w-5 h-5" />
               <span>Log Symptom</span>
             </button>
+            <button
+              onClick={() => navigate('/programs')}
+              className="btn-secondary flex items-center justify-center gap-2"
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Programmes</span>
+            </button>
           </div>
         </div>
 
-        {/* Block 4: What's New */}
+        {/* Block 4: Activity Feed */}
         <div className="summary-card animate-fade-in" style={{ animationDelay: '0.3s' }}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-temple-purple/10 dark:bg-temple-gold/10 flex items-center justify-center">
-              <Megaphone className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
+              <Activity className="w-4 h-4 text-temple-purple dark:text-temple-gold" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-              What's New
+              Today's Activity
             </h2>
           </div>
 
-          {announcements.length > 0 ? (
-            <div className="space-y-3">
-              {announcements.map((item) => {
-                const style = ANNOUNCEMENT_STYLES[item.type] || ANNOUNCEMENT_STYLES.general
-                const Icon = style.icon
-                return (
-                  <div
-                    key={item.id}
-                    className={`rounded-xl p-4 border ${style.bg} ${style.border} transition-all`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        <Icon className={`w-5 h-5 ${style.iconColor}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {item.title}
-                        </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {item.content}
-                        </p>
-                        <span className="text-xs text-gray-400 dark:text-gray-500 mt-2 block">
-                          {new Date(item.created_at).toLocaleDateString('en-GB', {
-                            day: 'numeric', month: 'short'
-                          })}
-                        </span>
+          {feedLoading ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="spinner w-6 h-6"></div>
+            </div>
+          ) : activityFeed.length > 0 ? (
+            <div className="relative">
+              {/* Timeline line */}
+              <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-gray-200 dark:bg-gray-700" />
+
+              <div className="space-y-1">
+                {activityFeed.map((item) => {
+                  const style = getFeedStyle(item)
+                  const Icon = style.icon
+                  const isClickable = !!item.action
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={item.action}
+                      className={`relative pl-10 py-3 rounded-xl transition-all ${
+                        isClickable ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''
+                      }`}
+                    >
+                      {/* Timeline dot */}
+                      <div className={`absolute left-2.5 top-4.5 w-[11px] h-[11px] rounded-full border-2 border-white dark:border-gray-900 ${style.dot} z-10`} />
+
+                      <div className="flex items-start gap-3">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${style.bg}`}>
+                          <Icon className={`w-4 h-4 ${style.iconColor}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider ${style.iconColor}`}>
+                              {style.label}
+                            </span>
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                              {formatFeedDate(item.date)}
+                            </span>
+                          </div>
+                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">
+                            {item.title}
+                          </h3>
+                          {item.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                          {isClickable && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-temple-purple dark:text-temple-gold mt-1">
+                              View <ArrowRight className="w-3 h-3" />
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-              No announcements right now. Check back soon!
+              Nothing yet today. Start your first step! 🙏
             </p>
           )}
         </div>
@@ -512,6 +743,98 @@ export const Today = () => {
 
       </div>
     </div>
+
+    {/* Feature Tour Slider */}
+    {showFeatureTour && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowFeatureTour(false)}>
+        <div
+          className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Slide content */}
+          <div className={`relative bg-gradient-to-br ${TOUR_SLIDES[tourSlide].gradient} p-8 pb-12 text-center`}>
+            {/* Close button */}
+            <button
+              onClick={() => setShowFeatureTour(false)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Slide counter */}
+            <div className="absolute top-4 left-4 px-2.5 py-1 rounded-full bg-white/20 text-white text-xs font-semibold">
+              {tourSlide + 1} / {TOUR_SLIDES.length}
+            </div>
+
+            <div className="text-6xl mb-4 mt-4">{TOUR_SLIDES[tourSlide].emoji}</div>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              {TOUR_SLIDES[tourSlide].title}
+            </h3>
+          </div>
+
+          <div className="p-6">
+            <p className="text-gray-600 dark:text-gray-300 text-center leading-relaxed mb-6">
+              {TOUR_SLIDES[tourSlide].description}
+            </p>
+
+            {/* CTA button */}
+            <button
+              onClick={() => {
+                setShowFeatureTour(false)
+                TOUR_SLIDES[tourSlide].action()
+              }}
+              className={`w-full py-3 px-4 rounded-xl text-white font-semibold bg-gradient-to-r ${TOUR_SLIDES[tourSlide].gradient} hover:opacity-90 transition-opacity mb-4`}
+            >
+              {TOUR_SLIDES[tourSlide].actionLabel}
+            </button>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setTourSlide(Math.max(0, tourSlide - 1))}
+                disabled={tourSlide === 0}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Back
+              </button>
+
+              {/* Dots */}
+              <div className="flex items-center gap-1.5">
+                {TOUR_SLIDES.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setTourSlide(i)}
+                    className={`rounded-full transition-all ${
+                      i === tourSlide
+                        ? 'w-6 h-2 bg-temple-purple dark:bg-temple-gold'
+                        : 'w-2 h-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {tourSlide < TOUR_SLIDES.length - 1 ? (
+                <button
+                  onClick={() => setTourSlide(tourSlide + 1)}
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-temple-purple dark:text-temple-gold hover:bg-temple-purple/10 dark:hover:bg-temple-gold/10 transition-colors"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowFeatureTour(false)}
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                >
+                  Done ✓
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Mobile Bottom Navigation */}
     <BottomNav />

@@ -714,7 +714,7 @@ const MealsTab = ({ mealLogs }) => {
 const MealCard = ({ meal }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
     <div className="flex items-start justify-between mb-3">
-      <div>
+      <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
           <span className="px-3 py-1 bg-temple-purple/10 dark:bg-temple-gold/10 text-temple-purple dark:text-temple-gold text-sm font-semibold rounded-full">
             {meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1)}
@@ -732,7 +732,31 @@ const MealCard = ({ meal }) => (
           </p>
         )}
       </div>
+      <button
+        onClick={() => window.location.href = `/wellness/meals/${meal.id}/edit`}
+        className="p-2 text-gray-400 hover:text-temple-purple dark:hover:text-temple-gold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+        title="Edit meal"
+      >
+        <Edit className="w-4 h-4" />
+      </button>
     </div>
+
+    {meal.photo_urls && meal.photo_urls.length > 0 && (
+      <div className="flex gap-2 mb-3">
+        {meal.photo_urls.map((url, i) => (
+          <img key={i} src={url} alt="Meal" className="w-16 h-16 rounded-lg object-cover" />
+        ))}
+      </div>
+    )}
+
+    {meal.nutrition && meal.nutrition.calories && (
+      <div className="flex gap-3 mb-3 text-xs">
+        <span className="px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-full font-medium">🔥 {meal.nutrition.calories} kcal</span>
+        {meal.nutrition.protein_g && <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full font-medium">P: {meal.nutrition.protein_g}g</span>}
+        {meal.nutrition.carbs_g && <span className="px-2 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-full font-medium">C: {meal.nutrition.carbs_g}g</span>}
+        {meal.nutrition.fat_g && <span className="px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 rounded-full font-medium">F: {meal.nutrition.fat_g}g</span>}
+      </div>
+    )}
 
     {meal.notes && (
       <p className="text-sm text-gray-700 dark:text-gray-300 mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -752,6 +776,12 @@ const MealCard = ({ meal }) => (
             Satisfaction: <strong>{meal.satisfaction}/10</strong>
           </span>
         )}
+      </div>
+    )}
+
+    {meal.water_ml > 0 && (
+      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+        💧 {meal.water_ml >= 1000 ? `${(meal.water_ml / 1000).toFixed(1)}L` : `${meal.water_ml}ml`} water
       </div>
     )}
   </div>
@@ -785,40 +815,67 @@ const SymptomCard = ({ symptom }) => {
     return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
   }
 
+  const displayDate = symptom.logged_at || symptom.created_at || `${symptom.log_date}T${symptom.log_time || '00:00'}`
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <h4 className="font-bold text-gray-900 dark:text-white capitalize">{symptom.symptom_type}</h4>
+            <h4 className="font-bold text-gray-900 dark:text-white capitalize">{symptom.symptom || symptom.symptom_type}</h4>
             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getSeverityColor(symptom.severity)}`}>
-              Severity: {symptom.severity}/10
+              {symptom.severity}/10
             </span>
+            {symptom.is_recurring && (
+              <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">
+                Recurring
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            {format(new Date(symptom.logged_at), 'MMM d, yyyy • h:mm a')}
+            {format(new Date(displayDate), 'MMM d, yyyy • h:mm a')}
           </p>
         </div>
+        <button
+          onClick={() => window.location.href = `/wellness/symptoms/${symptom.id}/edit`}
+          className="p-2 text-gray-400 hover:text-temple-purple dark:hover:text-temple-gold hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+          title="Edit symptom"
+        >
+          <Edit className="w-4 h-4" />
+        </button>
       </div>
 
-      {symptom.description && (
-        <p className="text-gray-700 dark:text-gray-300 mb-3">{symptom.description}</p>
+      {symptom.body_area && (
+        <div className="mb-2">
+          <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">
+            📍 {symptom.body_area}
+          </span>
+        </div>
+      )}
+
+      {symptom.notes && (
+        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{symptom.notes}</p>
       )}
 
       <div className="flex flex-wrap gap-2 text-sm">
         {symptom.duration_minutes && (
           <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full">
-            Duration: {symptom.duration_minutes} min
+            ⏱️ {symptom.duration_minutes >= 999 ? 'Ongoing' : symptom.duration_minutes >= 60 ? `${Math.round(symptom.duration_minutes / 60)}h` : `${symptom.duration_minutes} min`}
           </span>
         )}
         {symptom.triggered_by && (
           <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full">
-            Trigger: {symptom.triggered_by}
+            ⚡ {symptom.triggered_by}
           </span>
         )}
         {symptom.relieved_by && (
           <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
-            Relief: {symptom.relieved_by}
+            💊 {symptom.relieved_by}
+          </span>
+        )}
+        {symptom.interfered_with && (
+          <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">
+            Disrupted: {symptom.interfered_with}
           </span>
         )}
       </div>

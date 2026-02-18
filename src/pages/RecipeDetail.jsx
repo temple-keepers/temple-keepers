@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useRecipes } from '../hooks/useRecipes'
 import { mealPlanService } from '../services/mealPlanService'
-import { scaleIngredients } from '../lib/recipeAI'
+import { scaleIngredients, generateRecipeImage } from '../lib/recipeAI'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
@@ -23,6 +23,8 @@ export const RecipeDetail = () => {
   const [favorited, setFavorited] = useState(false)
   const [servings, setServings] = useState(4)
   const [originalServings, setOriginalServings] = useState(4)
+
+  const [generatingImage, setGeneratingImage] = useState(false)
 
   // Add to meal plan state
   const [showMealPlanModal, setShowMealPlanModal] = useState(false)
@@ -230,7 +232,7 @@ export const RecipeDetail = () => {
       <AppHeader showBackButton={true} backTo="/recipes" />
 
       {/* Hero Image */}
-      {recipe.image_urls && recipe.image_urls.length > 0 && (
+      {recipe.image_urls && recipe.image_urls.length > 0 ? (
         <div className="max-w-5xl mx-auto px-4 pt-6">
           <div className="rounded-2xl overflow-hidden shadow-lg aspect-[4/3] sm:aspect-[16/9] bg-gray-200 dark:bg-gray-700">
             <img
@@ -241,21 +243,54 @@ export const RecipeDetail = () => {
             />
           </div>
         </div>
+      ) : (
+        <div className="max-w-5xl mx-auto px-4 pt-6">
+          <button
+            disabled={generatingImage}
+            onClick={async () => {
+              setGeneratingImage(true)
+              toast.loading('\ud83d\udcf8 Generating image...', { id: 'gen-img' })
+              try {
+                const result = await generateRecipeImage(
+                  recipe.id, recipe.title, recipe.description,
+                  recipe.meal_type, recipe.cuisine
+                )
+                if (result.success) {
+                  toast.success('Image generated!', { id: 'gen-img' })
+                  setRecipe(prev => ({ ...prev, image_urls: [result.imageUrl] }))
+                } else {
+                  toast.error(`Image failed: ${result.error}`, { id: 'gen-img', duration: 5000 })
+                }
+              } catch (err) {
+                toast.error(`Image error: ${err.message}`, { id: 'gen-img', duration: 5000 })
+              }
+              setGeneratingImage(false)
+            }}
+            className="w-full rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 aspect-[4/3] sm:aspect-[16/9] flex flex-col items-center justify-center gap-3 hover:border-temple-purple dark:hover:border-temple-gold transition-colors"
+          >
+            {generatingImage ? (
+              <>
+                <div className="spinner w-8 h-8"></div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Generating image...</span>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="w-10 h-10 text-gray-400" />
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Generate AI Image</span>
+              </>
+            )}
+          </button>
+        </div>
       )}
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex-1">
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-gray-900 dark:text-white mb-2">
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-gray-900 dark:text-white leading-tight">
               {recipe.title}
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              {recipe.description}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-2 flex-shrink-0 pt-1">
             <button
               onClick={() => {
                 const msg = `Check out this healthy recipe on Temple Keepers:\n\n*${recipe.title}*\n${recipe.description ? `\n${recipe.description.slice(0, 100)}...` : ''}\n\nEvery recipe comes with scripture, nutrition info & healthy ingredient swaps.\n\nhttps://templekeepers.app/signup`
@@ -285,7 +320,13 @@ export const RecipeDetail = () => {
             >
               <Heart className={`w-6 h-6 ${favorited ? 'fill-current' : ''}`} />
             </button>
+            </div>
           </div>
+          {recipe.description && (
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+              {recipe.description}
+            </p>
+          )}
         </div>
       </div>
 
@@ -336,7 +377,7 @@ export const RecipeDetail = () => {
                       {instruction.step}
                     </div>
                     <p className="flex-1 pt-1 text-gray-700 dark:text-gray-300">
-                      {instruction.instruction}
+                      {instruction.instruction || instruction.text}
                     </p>
                   </div>
                 ))}

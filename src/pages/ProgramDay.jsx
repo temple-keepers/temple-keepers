@@ -30,6 +30,8 @@ export const ProgramDay = () => {
   const [reflectionAnswers, setReflectionAnswers] = useState({})
 
   useEffect(() => {
+    // Reset reflection answers when navigating to a different day
+    setReflectionAnswers({})
     loadDayContent()
   }, [slug, dayNumber])
 

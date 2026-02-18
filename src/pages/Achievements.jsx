@@ -27,7 +27,7 @@ const CATEGORY_LABELS = {
 }
 
 export const Achievements = () => {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -40,6 +40,24 @@ export const Achievements = () => {
     const result = await gamificationService.getUserProfile(user.id)
     setData(result)
     setLoading(false)
+  }
+
+  if (profile?.role === 'admin') {
+    return (
+      <>
+        <AppHeader title="Achievements" showBackButton backTo="/profile" />
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="glass-card p-8 max-w-md text-center">
+            <Award className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Admin Account</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Gamification is disabled for admin accounts to keep leaderboards fair.
+            </p>
+          </div>
+        </div>
+        <BottomNav />
+      </>
+    )
   }
 
   if (loading) {

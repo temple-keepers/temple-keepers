@@ -189,7 +189,7 @@ export const RecipeEdit = () => {
 
   const buildInstructionsPayload = () => {
     const trimmed = instructions
-      .map((instruction) => String(instruction.instruction || '').trim())
+      .map((instruction) => String(instruction.instruction || instruction.text || '').trim())
       .filter((instruction) => instruction.length > 0)
 
     return trimmed.map((instruction, index) => ({
@@ -441,7 +441,7 @@ export const RecipeEdit = () => {
                       {index + 1}
                     </div>
                     <textarea
-                      value={instruction.instruction}
+                      value={instruction.instruction || instruction.text || ''}
                       onChange={(e) => handleInstructionChange(index, e.target.value)}
                       className="form-input flex-1"
                       rows="2"

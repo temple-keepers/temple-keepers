@@ -50,7 +50,7 @@ export const referralService = {
         return
       }
 
-      // Award points to the referrer
+      // Award points to the referrer (admin users are excluded inside awardPoints)
       const result = await gamificationService.awardPoints(
         referrerId,
         'referral_signup',

@@ -71,6 +71,13 @@ export const gamificationService = {
     if (points === 0) return null
 
     try {
+      // Exclude admin users from gamification
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+      if (profile?.role === 'admin') return null
       // Prevent duplicate points for same source
       if (sourceId) {
         const { data: existing } = await supabase
@@ -123,6 +130,14 @@ export const gamificationService = {
    */
   async checkBadges(userId) {
     try {
+      // Exclude admin users from gamification
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
+      if (profile?.role === 'admin') return []
+
       // Get all badges and which ones user already has
       const [{ data: allBadges }, { data: earnedBadges }, stats] = await Promise.all([
         supabase.from('badges').select('*').order('sort_order'),

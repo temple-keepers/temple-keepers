@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 export const StreakBadge = () => {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const navigate = useNavigate()
   const [streak, setStreak] = useState(0)
   const [last7, setLast7] = useState([])
@@ -38,7 +38,7 @@ export const StreakBadge = () => {
     }
   }
 
-  if (!loaded) return null
+  if (!loaded || profile?.role === 'admin') return null
 
   // Milestone messages
   const getMessage = () => {

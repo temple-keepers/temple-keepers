@@ -15,9 +15,11 @@ import { CookieConsent } from './components/CookieConsent'
 import { Landing } from './pages/Landing'
 import { Login } from './pages/Login'
 import { Signup } from './pages/Signup'
+import { ForgotPassword } from './pages/ForgotPassword'
 import { Today } from './pages/Today'
 
 // ─── Lazy loads (everything else) ────────────────────────────────
+const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
 const Profile = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })))
 const Programs = lazy(() => import('./pages/Programs').then(m => ({ default: m.Programs })))
 const ProgramDetail = lazy(() => import('./pages/ProgramDetail').then(m => ({ default: m.ProgramDetail })))
@@ -140,6 +142,8 @@ function AppRoutes() {
       {/* Auth */}
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+      <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPassword /></Suspense>} />
 
       {/* Core — Today is eager loaded for fastest first paint */}
       <Route path="/today" element={<ProtectedRoute><Today /></ProtectedRoute>} />
@@ -164,7 +168,9 @@ function AppRoutes() {
       <Route path="/wellness" element={<ProtectedRoute><WellnessHub /></ProtectedRoute>} />
       <Route path="/wellness/check-in" element={<ProtectedRoute><WellnessCheckIn /></ProtectedRoute>} />
       <Route path="/wellness/meals/new" element={<ProtectedRoute><WellnessMealLog /></ProtectedRoute>} />
+      <Route path="/wellness/meals/:id/edit" element={<ProtectedRoute><WellnessMealLog /></ProtectedRoute>} />
       <Route path="/wellness/symptoms/new" element={<ProtectedRoute><WellnessSymptomLog /></ProtectedRoute>} />
+      <Route path="/wellness/symptoms/:id/edit" element={<ProtectedRoute><WellnessSymptomLog /></ProtectedRoute>} />
 
       {/* Profile & Settings */}
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

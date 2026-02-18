@@ -101,10 +101,12 @@ export const WeeklyThemeCard = ({ devotional, weeklyTheme, devotionalLoading, on
             </div>
 
             {/* AI-generated reflection */}
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                {devotional.reflection}
-              </p>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
+              {devotional.reflection.split('\n').filter(p => p.trim()).map((paragraph, i) => (
+                <p key={i} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {paragraph.trim()}
+                </p>
+              ))}
             </div>
           </>
         ) : (

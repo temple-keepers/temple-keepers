@@ -7,7 +7,12 @@
       "Bash(Where-Object { $_FullName -notmatch \"node_modules\" })",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(ls:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__get_edge_function",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "Bash(python -c:*)",
+      "mcp__claude_ai_Supabase__execute_sql"
     ]
   }
 }

@@ -11,11 +11,12 @@ import { gamificationService } from '../services/gamificationService'
  *   trackAction('wellness_checkin', 'checkin', someId)
  */
 export const useGamification = () => {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const badgeCheckTimer = useRef(null)
 
   const trackAction = useCallback(async (reason, sourceType, sourceId = null) => {
     if (!user) return
+    if (profile?.role === 'admin') return
 
     // Award points
     const result = await gamificationService.awardPoints(user.id, reason, sourceType, sourceId)
@@ -27,7 +28,7 @@ export const useGamification = () => {
     }, 2000)
 
     return result
-  }, [user])
+  }, [user, profile])
 
   return { trackAction }
 }

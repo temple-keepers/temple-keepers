@@ -33,6 +33,34 @@ async function callAI(action, params) {
   return result.data
 }
 
+/**
+ * Normalise AI response to include BOTH camelCase (for preview) and snake_case (for DB).
+ * The edge function already normalises instructions, but field names may vary.
+ */
+function normaliseRecipe(recipe) {
+  return {
+    ...recipe,
+    // Ensure both camelCase and snake_case exist for every field
+    prep_time: recipe.prep_time ?? recipe.prepTime ?? 0,
+    cook_time: recipe.cook_time ?? recipe.cookTime ?? 0,
+    total_time: recipe.total_time ?? recipe.totalTime ?? 0,
+    meal_type: recipe.meal_type ?? recipe.mealType ?? '',
+    dietary_tags: recipe.dietary_tags ?? recipe.dietaryTags ?? [],
+    // camelCase aliases for preview components
+    prepTime: recipe.prep_time ?? recipe.prepTime ?? 0,
+    cookTime: recipe.cook_time ?? recipe.cookTime ?? 0,
+    totalTime: recipe.total_time ?? recipe.totalTime ?? 0,
+    mealType: recipe.meal_type ?? recipe.mealType ?? '',
+    dietaryTags: recipe.dietary_tags ?? recipe.dietaryTags ?? [],
+    // Normalise instructions: ensure "instruction" field exists
+    instructions: (recipe.instructions || []).map(inst => ({
+      step: inst.step,
+      instruction: inst.instruction || inst.text || '',
+      time_minutes: inst.time_minutes || null,
+    })),
+  }
+}
+
 export const generateRecipe = async ({
   mealType = 'dinner',
   dietaryRestrictions = [],
@@ -41,14 +69,15 @@ export const generateRecipe = async ({
   servings = 4,
   includeIngredients = [],
   excludeIngredients = [],
-  previousRecipeTitles = []
+  previousRecipeTitles = [],
+  craving = ''
 }) => {
   try {
     const recipe = await callAI('generate-recipe', {
       mealType, dietaryRestrictions, cuisine, cookingTime, servings,
-      includeIngredients, excludeIngredients, previousRecipeTitles,
+      includeIngredients, excludeIngredients, previousRecipeTitles, craving,
     })
-    return { success: true, recipe }
+    return { success: true, recipe: normaliseRecipe(recipe) }
   } catch (error) {
     console.error('Recipe generation error:', error)
     return { success: false, error: error.message || 'Failed to generate recipe' }

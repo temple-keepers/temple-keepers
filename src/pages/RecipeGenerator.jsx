@@ -17,6 +17,7 @@ export const RecipeGenerator = () => {
   const [servings, setServings] = useState(4)
   const [recipeCount, setRecipeCount] = useState(1)
   const [dietaryRestrictions, setDietaryRestrictions] = useState([])
+  const [craving, setCraving] = useState('')
   const [includeIngredients, setIncludeIngredients] = useState('')
   const [excludeIngredients, setExcludeIngredients] = useState('')
 
@@ -78,7 +79,8 @@ export const RecipeGenerator = () => {
         servings,
         includeIngredients: parseIngredientList(includeIngredients),
         excludeIngredients: parseIngredientList(excludeIngredients),
-        previousRecipeTitles: results.map(r => r.title)
+        previousRecipeTitles: results.map(r => r.title),
+        craving: craving.trim()
       })
 
       if (success) {
@@ -118,12 +120,12 @@ export const RecipeGenerator = () => {
       description: recipe.description,
       meal_type: saveMealType,
       cuisine: recipe.cuisine || cuisine,
-      prep_time: recipe.prepTime,
-      cook_time: recipe.cookTime,
-      total_time: recipe.totalTime,
+      prep_time: recipe.prep_time,
+      cook_time: recipe.cook_time,
+      total_time: recipe.total_time,
       servings: recipe.servings,
       difficulty,
-      dietary_tags: recipe.dietaryTags || [],
+      dietary_tags: recipe.dietary_tags || [],
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
       nutrition: recipe.nutrition,
@@ -142,6 +144,7 @@ export const RecipeGenerator = () => {
       toast.success(`"${recipe.title}" saved! 🙏`)
 
       // Generate image in the background (don't block the user)
+      toast.loading('📸 Generating image...', { id: `img-${data.id}` })
       generateRecipeImage(
         data.id,
         recipe.title,
@@ -150,12 +153,12 @@ export const RecipeGenerator = () => {
         recipe.cuisine || cuisine
       ).then(result => {
         if (result.success) {
-          toast.success(`📸 Image generated for "${recipe.title}"`, { duration: 3000 })
+          toast.success(`📸 Image generated for "${recipe.title}"`, { id: `img-${data.id}`, duration: 3000 })
         } else {
-          console.warn('Image generation failed:', result.error)
+          toast.error(`Image failed: ${result.error}`, { id: `img-${data.id}`, duration: 5000 })
         }
       }).catch((err) => {
-        console.warn('Image generation failed for', recipe.title, err)
+        toast.error(`Image error: ${err.message || err}`, { id: `img-${data.id}`, duration: 5000 })
       })
     } else {
       console.error('Save error:', error)
@@ -195,6 +198,23 @@ export const RecipeGenerator = () => {
                 <ChefHat className="w-5 h-5 text-temple-purple dark:text-temple-gold" />
                 Recipe Settings
               </h2>
+
+              {/* Craving / Mood */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  What do you feel like eating today?
+                </label>
+                <input
+                  type="text"
+                  value={craving}
+                  onChange={(e) => setCraving(e.target.value)}
+                  placeholder="e.g., something warm and comforting, a light summer salad, spicy noodles..."
+                  className="form-input"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Optional — describe your mood or craving and the AI will tailor the recipe
+                </p>
+              </div>
 
               {/* Meal Type */}
               <div className="mb-4">
@@ -515,7 +535,7 @@ export const RecipeGenerator = () => {
                             {instruction.step}
                           </div>
                           <p className="text-sm text-gray-700 dark:text-gray-300 pt-0.5">
-                            {instruction.instruction}
+                            {instruction.instruction || instruction.text}
                           </p>
                         </div>
                       ))}

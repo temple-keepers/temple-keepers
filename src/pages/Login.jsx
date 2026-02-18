@@ -81,6 +81,15 @@ export const Login = () => {
             />
           </div>
 
+          <div className="text-right">
+            <Link
+              to="/forgot-password"
+              className="text-sm text-temple-purple dark:text-temple-gold hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}

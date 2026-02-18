@@ -185,12 +185,29 @@ export const wellnessService = {
    * Create a new meal log
    */
   async createMealLog(userId, mealData) {
+    // Only send columns that exist in the DB
+    const payload = {
+      user_id: userId,
+      meal_date: mealData.meal_date,
+      meal_time: mealData.meal_time,
+      meal_type: mealData.meal_type,
+      description: mealData.description,
+      portion_size: mealData.portion_size || null,
+      hunger_before: mealData.hunger_before || null,
+      hunger_after: mealData.hunger_after || null,
+      satisfaction: mealData.satisfaction || null,
+      location: mealData.location || null,
+      notes: mealData.notes || null,
+      nutrition: mealData.nutrition || null,
+      photo_urls: mealData.photo_urls?.length ? mealData.photo_urls : null,
+      tags: mealData.tags?.length ? mealData.tags : null,
+      water_ml: mealData.water_ml || 0,
+      recipe_id: mealData.recipe_id || null,
+    };
+
     const { data, error } = await supabase
       .from('meal_logs')
-      .insert({
-        user_id: userId,
-        ...mealData,
-      })
+      .insert(payload)
       .select('*, recipes(title, meal_type)')
       .single();
     
@@ -202,9 +219,20 @@ export const wellnessService = {
    * Update a meal log
    */
   async updateMealLog(mealLogId, updates) {
+    // Only send columns that exist in the DB
+    const payload = {};
+    const allowedFields = [
+      'meal_date', 'meal_time', 'meal_type', 'description', 'portion_size',
+      'hunger_before', 'hunger_after', 'satisfaction', 'location', 'notes',
+      'nutrition', 'photo_urls', 'tags', 'water_ml', 'recipe_id'
+    ];
+    for (const key of allowedFields) {
+      if (key in updates) payload[key] = updates[key];
+    }
+
     const { data, error } = await supabase
       .from('meal_logs')
-      .update(updates)
+      .update(payload)
       .eq('id', mealLogId)
       .select('*, recipes(title, meal_type)')
       .single();
@@ -272,7 +300,13 @@ export const wellnessService = {
         symptom: symptomData.symptom,
         severity: symptomData.severity,
         notes: symptomData.notes || null,
-        duration_minutes: symptomData.duration_minutes || null
+        duration_minutes: symptomData.duration_minutes || null,
+        body_area: symptomData.body_area || null,
+        triggered_by: symptomData.triggered_by || null,
+        relieved_by: symptomData.relieved_by || null,
+        is_recurring: symptomData.is_recurring || false,
+        mood_impact: symptomData.mood_impact || null,
+        interfered_with: symptomData.interfered_with || null,
       })
       .select()
       .single();
@@ -290,9 +324,19 @@ export const wellnessService = {
    * Update a symptom log
    */
   async updateSymptomLog(symptomLogId, updates) {
+    const payload = {};
+    const allowedFields = [
+      'log_date', 'log_time', 'symptom', 'severity', 'notes',
+      'duration_minutes', 'body_area', 'triggered_by', 'relieved_by',
+      'is_recurring', 'mood_impact', 'interfered_with'
+    ];
+    for (const key of allowedFields) {
+      if (key in updates) payload[key] = updates[key];
+    }
+
     const { data, error } = await supabase
       .from('symptom_logs')
-      .update(updates)
+      .update(payload)
       .eq('id', symptomLogId)
       .select()
       .single();
