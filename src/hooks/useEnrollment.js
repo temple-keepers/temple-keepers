@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { ghlService } from '../services/ghlService'
-
 export const useEnrollment = () => {
   const { user } = useAuth()
   const [enrollments, setEnrollments] = useState([])
@@ -146,14 +144,6 @@ export const useEnrollment = () => {
     if (!error) {
       await getMyEnrollments()
 
-      // Fire GHL event (non-blocking)
-      ghlService.programEnrolled({
-        email: user.email,
-        firstName: user.user_metadata?.first_name || '',
-        programTitle: data.programs?.title || '',
-        programSlug: data.programs?.slug || '',
-        fastingType: data.fasting_type || '',
-      })
     }
 
     return { data, error }
@@ -225,14 +215,6 @@ export const useEnrollment = () => {
     if (!completionError) {
       await getMyEnrollments()
 
-      // Fire GHL day completion event (non-blocking)
-      ghlService.dayCompleted({
-        email: user.email,
-        firstName: user.user_metadata?.first_name || '',
-        programTitle: '',  // Will be enriched by edge function
-        dayNumber,
-        totalDays: completedDays.length,
-      })
     }
 
     return { data: completion, error: completionError }
@@ -265,12 +247,6 @@ export const useEnrollment = () => {
     if (!error) {
       await getMyEnrollments()
 
-      // Fire GHL program completed event (non-blocking)
-      ghlService.programCompleted({
-        email: user.email,
-        firstName: user.user_metadata?.first_name || '',
-        programTitle: data.programs?.title || '',
-      })
     }
 
     return { data, error }

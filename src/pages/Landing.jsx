@@ -632,9 +632,11 @@ export const Landing = () => {
             <div>
               <h4 className="text-sm font-semibold text-gray-300 mb-4">Legal</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="/privacy" className="hover:text-temple-gold transition-colors">Privacy Policy</a></li>
                 <li><a href="/terms" className="hover:text-temple-gold transition-colors">Terms of Service</a></li>
+                <li><a href="/privacy" className="hover:text-temple-gold transition-colors">Privacy Policy</a></li>
                 <li><a href="/cookies" className="hover:text-temple-gold transition-colors">Cookie Policy</a></li>
+                <li><a href="/acceptable-use" className="hover:text-temple-gold transition-colors">Acceptable Use</a></li>
+                <li><a href="/disclaimer" className="hover:text-temple-gold transition-colors">Disclaimer</a></li>
               </ul>
             </div>
           </div>

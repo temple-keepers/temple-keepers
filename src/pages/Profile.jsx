@@ -15,6 +15,7 @@ import {
 import { PinSetup } from '../components/PinSetup'
 import { useNavigate } from 'react-router-dom'
 import { referralService } from '../services/referralService'
+import { AccountDangerZone } from '../components/AccountDangerZone'
 
 const GENDER_OPTIONS = [
   { value: 'female', label: 'Female' },
@@ -527,21 +528,21 @@ export const Profile = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide bg-white dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700">
+        <div className="flex gap-1 mb-6 overflow-x-auto scrollbar-hide bg-white dark:bg-gray-800 rounded-xl p-1.5 border border-gray-200 dark:border-gray-700">
           {tabs.map(tab => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all flex-1 justify-center ${
+                className={`flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all flex-1 justify-center ${
                   activeTab === tab.id
-                    ? 'bg-temple-purple text-white dark:bg-temple-gold dark:text-gray-900'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'bg-temple-purple text-white dark:bg-temple-gold dark:text-gray-900 shadow-md'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span>{tab.label}</span>
               </button>
             )
           })}
@@ -1050,6 +1051,8 @@ export const Profile = () => {
             )}
           </div>
         )}
+
+        <AccountDangerZone />
 
       </div>
     </div>

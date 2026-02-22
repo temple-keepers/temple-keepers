@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Lock, Check } from 'lucide-react'
+import { PasswordInput } from '../components/PasswordInput'
 
 export const ResetPassword = () => {
   const [password, setPassword] = useState('')
@@ -16,8 +17,8 @@ export const ResetPassword = () => {
     e.preventDefault()
     setError('')
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters')
       return
     }
 
@@ -31,7 +32,12 @@ export const ResetPassword = () => {
     const { error } = await updatePassword(password)
 
     if (error) {
-      setError(error.message)
+      const msg = error.message || ''
+      if (msg.toLowerCase().includes('weak_password') || msg.toLowerCase().includes('weak password')) {
+        setError('That password is too common or has been found in a data breach. Please choose a stronger, more unique password.')
+      } else {
+        setError(msg)
+      }
     } else {
       setSuccess(true)
       setTimeout(() => navigate('/today'), 2000)
@@ -79,32 +85,36 @@ export const ResetPassword = () => {
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">New Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-input"
-                placeholder="••••••••"
-                required
-                minLength={6}
-                disabled={loading}
-              />
-            </div>
+            <PasswordInput
+              value={password}
+              onChange={setPassword}
+              label="New Password"
+              disabled={loading}
+              minLength={8}
+              autoComplete="new-password"
+            />
 
             <div className="form-group">
               <label className="form-label">Confirm Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="form-input"
-                placeholder="••••••••"
-                required
-                minLength={6}
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="form-input"
+                  placeholder="••••••••"
+                  required
+                  minLength={8}
+                  disabled={loading}
+                  autoComplete="new-password"
+                />
+              </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-red-500 mt-1">Passwords don't match</p>
+              )}
+              {confirmPassword && password === confirmPassword && confirmPassword.length >= 8 && (
+                <p className="text-xs text-green-500 mt-1">Passwords match ✓</p>
+              )}
             </div>
 
             <button

@@ -7,7 +7,7 @@ import { scaleIngredients, generateRecipeImage } from '../lib/recipeAI'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Clock, Users, Heart, ChefHat, CalendarPlus, X, Plus, ArrowRightLeft, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Clock, Users, Heart, ChefHat, CalendarPlus, X, Plus, ArrowRightLeft, ImageIcon, Pencil, Trash2 } from 'lucide-react'
 
 const DAYS = mealPlanService.DAYS
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack']
@@ -15,8 +15,8 @@ const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack']
 export const RecipeDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const { getRecipe, addToFavorites, removeFromFavorites, isFavorited } = useRecipes()
+  const { user, profile } = useAuth()
+  const { getRecipe, deleteRecipe, addToFavorites, removeFromFavorites, isFavorited } = useRecipes()
   
   const [recipe, setRecipe] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -33,6 +33,9 @@ export const RecipeDetail = () => {
   const [selectedDay, setSelectedDay] = useState(0)
   const [selectedMealType, setSelectedMealType] = useState('dinner')
   const [addingToPlan, setAddingToPlan] = useState(false)
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletingRecipe, setDeletingRecipe] = useState(false)
 
   // AI-powered ingredient scaling
   const [aiIngredients, setAiIngredients] = useState(null)
@@ -94,6 +97,21 @@ export const RecipeDetail = () => {
     } else {
       await addToFavorites(id)
       setFavorited(true)
+    }
+  }
+
+  const canManage = user && recipe && (profile?.role === 'admin' || recipe.created_by === user.id)
+
+  const handleDelete = async () => {
+    setDeletingRecipe(true)
+    const { error } = await deleteRecipe(id)
+    if (!error) {
+      toast.success('Recipe deleted')
+      navigate('/recipes')
+    } else {
+      toast.error('Failed to delete recipe')
+      setDeletingRecipe(false)
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -286,41 +304,58 @@ export const RecipeDetail = () => {
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-gray-900 dark:text-white leading-tight">
-              {recipe.title}
-            </h1>
-            <div className="flex items-center gap-2 flex-shrink-0 pt-1">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-gray-900 dark:text-white leading-tight mb-3">
+            {recipe.title}
+          </h1>
+
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            {canManage && (
+              <>
+                <button
+                  onClick={() => navigate(`/recipes/${id}/edit`)}
+                  className="p-2.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                  title="Edit Recipe"
+                >
+                  <Pencil className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                  title="Delete Recipe"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </>
+            )}
             <button
               onClick={() => {
                 const msg = `Check out this healthy recipe on Temple Keepers:\n\n*${recipe.title}*\n${recipe.description ? `\n${recipe.description.slice(0, 100)}...` : ''}\n\nEvery recipe comes with scripture, nutrition info & healthy ingredient swaps.\n\nhttps://templekeepers.app/signup`
                 window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
               }}
-              className="p-3 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors flex-shrink-0"
+              className="p-2.5 rounded-full bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors"
               title="Share on WhatsApp"
             >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
             </button>
             <button
               onClick={openMealPlanModal}
-              className="p-3 rounded-full bg-temple-purple/10 dark:bg-temple-gold/10 text-temple-purple dark:text-temple-gold hover:bg-temple-purple/20 dark:hover:bg-temple-gold/20 transition-colors flex-shrink-0"
+              className="p-2.5 rounded-full bg-temple-purple/10 dark:bg-temple-gold/10 text-temple-purple dark:text-temple-gold hover:bg-temple-purple/20 dark:hover:bg-temple-gold/20 transition-colors"
               title="Add to Meal Plan"
             >
-              <CalendarPlus className="w-6 h-6" />
+              <CalendarPlus className="w-5 h-5" />
             </button>
             <button
               onClick={handleToggleFavorite}
               className={`
-                p-3 rounded-full transition-colors flex-shrink-0
+                p-2.5 rounded-full transition-colors
                 ${favorited
                   ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }
               `}
             >
-              <Heart className={`w-6 h-6 ${favorited ? 'fill-current' : ''}`} />
+              <Heart className={`w-5 h-5 ${favorited ? 'fill-current' : ''}`} />
             </button>
-            </div>
           </div>
           {recipe.description && (
             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -649,6 +684,46 @@ export const RecipeDetail = () => {
     </div>
 
     <BottomNav />
+
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            Delete Recipe
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Are you sure you want to delete "{recipe?.title}"? This cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={deletingRecipe}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deletingRecipe}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {deletingRecipe ? (
+                <>
+                  <div className="spinner w-4 h-4"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Add to Meal Plan Modal */}
     {showMealPlanModal && (

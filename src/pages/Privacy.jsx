@@ -1,9 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { PublicHeader } from '../components/PublicHeader'
 
 export const Privacy = () => {
-  const navigate = useNavigate()
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <PublicHeader />
@@ -15,7 +13,7 @@ export const Privacy = () => {
         </h1>
         
         <p className="text-gray-600 dark:text-gray-400 mb-8">
-          Last Updated: February 2, 2026
+          Last Updated: 18 February 2026
         </p>
 
         <div className="glass-card p-8 prose dark:prose-invert max-w-none">
@@ -23,7 +21,7 @@ export const Privacy = () => {
           <p>
             Sagacity Network Ltd, trading as Temple Keepers ("we," "our," or "us"), is committed to protecting 
             your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information 
-            when you use our platform at templekeepers.com (the "Service").
+            when you use our platform at templekeepers.app (the "Service").
           </p>
 
           <h2>2. Information We Collect</h2>
@@ -31,8 +29,10 @@ export const Privacy = () => {
           <h3>2.1 Information You Provide</h3>
           <ul>
             <li><strong>Account Information:</strong> Name, email address, password</li>
-            <li><strong>Profile Information:</strong> Dietary preferences, wellness goals, fasting type selections</li>
-            <li><strong>User Content:</strong> Check-in responses, meal logs, program reflections, recipe favorites</li>
+            <li><strong>Profile Information:</strong> Dietary preferences, wellness goals, fasting type selections, city, country, church denomination</li>
+            <li><strong>Health Information:</strong> Height, weight, fitness level, dietary restrictions, allergies, health conditions, medication notes, symptom logs</li>
+            <li><strong>Spiritual Information:</strong> Faith journey stage, prayer style, fasting experience, Bible preferences</li>
+            <li><strong>User Content:</strong> Check-in responses, meal logs (including photos), programme reflections, recipe favourites, community pod posts, prayer requests</li>
             <li><strong>Communications:</strong> Messages you send to us, feedback, support requests</li>
           </ul>
 
@@ -57,11 +57,32 @@ export const Privacy = () => {
 
           <h2>4. AI-Generated Content</h2>
           <p>
-            Temple Keepers uses AI (Google Gemini) to generate personalized programs and recipes. When you request 
-            AI-generated content, we send your dietary preferences and program parameters to Google's API. Google 
-            processes this data according to their privacy policy. We do not share personal identifying information 
-            with AI services.
+            Temple Keepers uses AI (Google Gemini) to generate personalised devotionals, recipes, nutrition
+            estimates, and programme content. When you request AI-generated content, we may send your
+            dietary preferences, health profile, and relevant programme parameters to Google's API.
           </p>
+          <p>Important points about AI data processing:</p>
+          <ul>
+            <li>We <strong>never</strong> send your name, email, or other personally identifying information to AI services</li>
+            <li>Only anonymised preferences (e.g. "vegetarian, gluten-free") are shared with the AI</li>
+            <li>Google processes this data according to their Cloud API privacy policy</li>
+            <li>AI-generated content is stored in our database and associated with your account</li>
+            <li>Meal photos you upload are processed locally for logging and are not sent to AI services</li>
+          </ul>
+
+          <h2>4A. Special Category Data (Health Information)</h2>
+          <p>
+            Under UK GDPR, health information is classified as "special category data" and receives
+            additional protection. We collect health data (conditions, symptoms, medications, dietary
+            restrictions) solely to personalise your wellness experience. This data:
+          </p>
+          <ul>
+            <li>Is processed on the basis of your <strong>explicit consent</strong></li>
+            <li>Is stored securely with row-level security (only you can access your data)</li>
+            <li>Is <strong>never</strong> shared with advertisers, data brokers, or third-party marketers</li>
+            <li>Is <strong>never</strong> used for insurance, employment, or credit decisions</li>
+            <li>Can be deleted at any time by requesting account deletion</li>
+          </ul>
 
           <h2>5. Data Sharing and Disclosure</h2>
           
@@ -105,7 +126,7 @@ export const Privacy = () => {
             <li><strong>Object:</strong> Object to certain processing activities</li>
           </ul>
           <p>
-            To exercise these rights, email us at privacy@templekeepers.com
+            To exercise these rights, email us at privacy@templekeepers.app
           </p>
 
           <h2>8. Data Retention</h2>
@@ -138,8 +159,8 @@ export const Privacy = () => {
           <p>For privacy questions or concerns:</p>
           <p>
             <strong>Sagacity Network Ltd (trading as Temple Keepers)</strong><br />
-            Email: privacy@templekeepers.com<br />
-            Address: Basildon, United Kingdom
+            Email: privacy@templekeepers.app<br />
+            Registered in England &middot; Company No. 15712287 &middot; Basildon, United Kingdom
           </p>
 
           <h2>13. UK GDPR Compliance</h2>

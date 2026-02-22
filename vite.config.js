@@ -7,6 +7,8 @@ export default defineConfig({
     port: 3000
   },
   build: {
+    // Disable source maps in production — prevents source code exposure
+    sourcemap: false,
     // Split chunks for better caching
     rollupOptions: {
       output: {

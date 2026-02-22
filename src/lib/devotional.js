@@ -37,9 +37,9 @@ async function callAI(action, params) {
  * Generate a daily devotional using server-side Gemini AI
  * Returns: { verse, reference, reflection }
  */
-export const generateDevotional = async (theme = null) => {
+export const generateDevotional = async (theme = null, firstName = '') => {
   try {
-    const devotional = await callAI('generate-devotional', { theme })
+    const devotional = await callAI('generate-devotional', { theme, firstName })
 
     // Validate structure
     if (!devotional.verse || !devotional.reference || !devotional.reflection) {

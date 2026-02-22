@@ -3,20 +3,34 @@ import { generateDevotional, getFallbackDevotional } from '../lib/devotional'
 import { useTodayLog } from './useTodayLog'
 import { supabase } from '../lib/supabase'
 import { useGamification } from './useGamification'
+import { useAuth } from '../contexts/AuthContext'
 
 /**
  * Hook to manage daily devotional content
  * - Loads current weekly theme
  * - Generates themed devotional via Gemini (or general if no theme)
  * - Caches in database (one per day)
+ * - Personalises greeting with user's first name
  */
 export const useDevotional = () => {
   const { logId, getEntriesByType, addEntry } = useTodayLog()
   const { trackAction } = useGamification()
+  const { user, profile } = useAuth()
   const [devotional, setDevotional] = useState(null)
   const [weeklyTheme, setWeeklyTheme] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const firstName = profile?.first_name || user?.user_metadata?.first_name || ''
+
+  // Personalise the devotional reflection with the user's name
+  const personalise = (devotionalData) => {
+    if (!devotionalData?.reflection || !firstName) return devotionalData
+    const reflection = devotionalData.reflection
+      .replace(/Dear Temple Keepers/gi, `Dear ${firstName}`)
+      .replace(/Dear Temple Keeper/gi, `Dear ${firstName}`)
+    return { ...devotionalData, reflection }
+  }
 
   // Load weekly theme on mount
   useEffect(() => {
@@ -56,7 +70,7 @@ export const useDevotional = () => {
       const existingDevotionals = getEntriesByType('devotional')
       
       if (existingDevotionals.length > 0) {
-        setDevotional(existingDevotionals[0].entry_data)
+        setDevotional(personalise(existingDevotionals[0].entry_data))
         setLoading(false)
         return
       }
@@ -69,24 +83,24 @@ export const useDevotional = () => {
         reference: weeklyTheme.scripture_reference
       } : null
 
-      const result = await generateDevotional(themeData)
+      const result = await generateDevotional(themeData, firstName)
 
       if (result.success) {
         const { data: saved, error: saveError } = await addEntry('devotional', result.data)
         if (saveError) console.error('Error saving devotional:', saveError)
-        setDevotional(result.data)
+        setDevotional(personalise(result.data))
         trackAction('devotional_read', 'devotional', saved?.id || null)
       } else {
         console.warn('AI generation failed, using fallback')
         const fallback = getFallbackDevotional()
         await addEntry('devotional', fallback)
-        setDevotional(fallback)
+        setDevotional(personalise(fallback))
       }
     } catch (err) {
       console.error('Error loading devotional:', err)
       setError(err.message)
       const fallback = getFallbackDevotional()
-      setDevotional(fallback)
+      setDevotional(personalise(fallback))
     } finally {
       setLoading(false)
     }
@@ -100,10 +114,10 @@ export const useDevotional = () => {
       reference: weeklyTheme.scripture_reference
     } : null
 
-    const result = await generateDevotional(themeData)
+    const result = await generateDevotional(themeData, firstName)
     if (result.success) {
       await addEntry('devotional', result.data)
-      setDevotional(result.data)
+      setDevotional(personalise(result.data))
     }
     setLoading(false)
   }

@@ -13,6 +13,7 @@ const iconMap = {
 
 export const WeeklyThemeCard = ({ devotional, weeklyTheme, devotionalLoading, onRegenerate }) => {
   const [actionDone, setActionDone] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const { trackAction } = useGamification()
 
   useEffect(() => {
@@ -100,14 +101,50 @@ export const WeeklyThemeCard = ({ devotional, weeklyTheme, devotionalLoading, on
               </p>
             </div>
 
-            {/* AI-generated reflection */}
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-              {devotional.reflection.split('\n').filter(p => p.trim()).map((paragraph, i) => (
-                <p key={i} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {paragraph.trim()}
-                </p>
-              ))}
-            </div>
+            {/* AI-generated reflection — collapsed by default */}
+            {(() => {
+              const paragraphs = devotional.reflection.split('\n').filter(p => p.trim())
+              const firstParagraph = paragraphs[0]?.trim() || ''
+              // Show a truncated preview: first ~120 chars of the first paragraph
+              const previewText = firstParagraph.length > 120
+                ? firstParagraph.slice(0, 120).replace(/\s+\S*$/, '') + '…'
+                : firstParagraph
+              const hasMore = paragraphs.length > 1 || firstParagraph.length > 120
+
+              return (
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  {expanded ? (
+                    <div className="space-y-3">
+                      {paragraphs.map((paragraph, i) => (
+                        <p key={i} className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                          {paragraph.trim()}
+                        </p>
+                      ))}
+                      <button
+                        onClick={() => setExpanded(false)}
+                        className="text-xs font-semibold text-temple-purple dark:text-temple-gold hover:underline mt-1"
+                      >
+                        Show less
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {previewText}
+                      </p>
+                      {hasMore && (
+                        <button
+                          onClick={() => setExpanded(true)}
+                          className="text-xs font-semibold text-temple-purple dark:text-temple-gold hover:underline mt-2 inline-flex items-center gap-1"
+                        >
+                          Read full devotional ↓
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </>
         ) : (
           <div className="text-center py-6 text-gray-500 dark:text-gray-400">

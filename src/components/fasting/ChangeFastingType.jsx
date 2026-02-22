@@ -2,12 +2,9 @@ import { useState } from 'react'
 import { RefreshCw, X, AlertTriangle } from 'lucide-react'
 import { FastingTypeSelector } from './FastingTypeSelector'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
-import { ghlService } from '../../services/ghlService'
 import toast from 'react-hot-toast'
 
 export const ChangeFastingType = ({ enrollment, onChanged }) => {
-  const { profile } = useAuth()
   const [showSelector, setShowSelector] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [pendingSelection, setPendingSelection] = useState(null)
@@ -44,14 +41,6 @@ export const ChangeFastingType = ({ enrollment, onChanged }) => {
       if (error) throw error
 
       toast.success('Fasting type updated! Grace abounds. 🙏')
-
-      // Track in GHL (non-blocking)
-      ghlService.fastingTypeChanged({
-        email: profile?.email || '',
-        firstName: profile?.first_name || '',
-        oldFastingType: enrollment.fasting_type || 'none',
-        newFastingType: pendingSelection.fasting_type,
-      })
 
       setShowConfirm(false)
       setPendingSelection(null)

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { UserPlus } from 'lucide-react'
-import { ghlService } from '../services/ghlService'
+import { PasswordInput } from '../components/PasswordInput'
 import { emailService } from '../services/emailService'
 import { referralService } from '../services/referralService'
 
@@ -39,12 +39,17 @@ export const Signup = () => {
     const { data, error } = await signUp(email, password, firstName)
 
     if (error) {
-      setError(error.message)
+      // Translate cryptic Supabase errors into friendly messages
+      const msg = error.message || ''
+      if (msg.toLowerCase().includes('weak_password') || msg.toLowerCase().includes('weak password')) {
+        setError('That password is too common or has been found in a data breach. Please choose a stronger, more unique password.')
+      } else if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already been registered')) {
+        setError('An account with this email already exists. Try signing in instead, or use a different email.')
+      } else {
+        setError(msg)
+      }
       setLoading(false)
     } else {
-      // Track signup in GHL (non-blocking)
-      ghlService.userSignup({ email, firstName })
-
       // Send welcome email via Resend (non-blocking)
       emailService.welcome({ email, firstName })
 
@@ -114,22 +119,14 @@ export const Signup = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-input"
-              placeholder="••••••••"
-              required
-              disabled={loading}
-              minLength={8}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              At least 8 characters — avoid common or easily guessed passwords
-            </p>
-          </div>
+          <PasswordInput
+            value={password}
+            onChange={setPassword}
+            label="Password"
+            disabled={loading}
+            minLength={8}
+            autoComplete="new-password"
+          />
 
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input

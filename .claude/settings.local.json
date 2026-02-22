@@ -12,7 +12,14 @@
       "mcp__claude_ai_Supabase__get_edge_function",
       "mcp__claude_ai_Supabase__deploy_edge_function",
       "Bash(python -c:*)",
-      "mcp__claude_ai_Supabase__execute_sql"
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npm run build:*)",
+      "Bash(grep:*)",
+      "Read(//c/Users/sagac/.claude/projects/c--Users-sagac-temple-keepers-v3/bc20cef1-7404-4da5-a8ea-84072911ef23/tool-results/**)",
+      "Bash(node -e:*)",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(npx vite build:*)",
+      "Bash(git add:*)"
     ]
   }
 }

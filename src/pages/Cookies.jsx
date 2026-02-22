@@ -210,8 +210,8 @@ export const Cookies = () => {
           </p>
           <p>
             <strong>Sagacity Network Ltd (trading as Temple Keepers)</strong><br />
-            Email: privacy@templekeepers.com<br />
-            Address: Basildon, United Kingdom
+            Email: privacy@templekeepers.app<br />
+            Registered in England &middot; Company No. 15712287 &middot; Basildon, United Kingdom
           </p>
 
           <h2>11. More Information</h2>

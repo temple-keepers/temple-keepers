@@ -70,14 +70,21 @@ export const generateRecipe = async ({
   includeIngredients = [],
   excludeIngredients = [],
   previousRecipeTitles = [],
-  craving = ''
+  craving = '',
+  skipHealthySwaps = false
 }) => {
   try {
     const recipe = await callAI('generate-recipe', {
       mealType, dietaryRestrictions, cuisine, cookingTime, servings,
       includeIngredients, excludeIngredients, previousRecipeTitles, craving,
+      skipHealthySwaps,
     })
-    return { success: true, recipe: normaliseRecipe(recipe) }
+    const normalised = normaliseRecipe(recipe)
+    // Strip healthy swaps if user opted out (safety net in case edge function still returns them)
+    if (skipHealthySwaps) {
+      normalised.healthySwaps = []
+    }
+    return { success: true, recipe: normalised }
   } catch (error) {
     console.error('Recipe generation error:', error)
     return { success: false, error: error.message || 'Failed to generate recipe' }

@@ -8,7 +8,6 @@ import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { ArrowLeft, ArrowRight, Check, BookOpen } from 'lucide-react'
 import { ChangeFastingType } from '../components/fasting/ChangeFastingType'
-import { ghlService } from '../services/ghlService'
 import { emailService } from '../services/emailService'
 
 export const ProgramDay = () => {
@@ -129,24 +128,9 @@ export const ProgramDay = () => {
     )
 
     if (!error) {
-      // Track day completion in GHL (non-blocking)
-      ghlService.dayCompleted({
-        email: profile?.email || user?.email,
-        firstName: profile?.first_name,
-        programTitle: program.title,
-        dayNumber: parseInt(dayNumber),
-        totalDays: program.duration_days,
-      })
-
       // Check if this was the last day → program completed
       const completedCount = (enrollment.completed_days?.length || 0) + 1
       if (completedCount >= program.duration_days) {
-        ghlService.programCompleted({
-          email: profile?.email || user?.email,
-          firstName: profile?.first_name,
-          programTitle: program.title,
-        })
-
         // Send completion congratulations email
         emailService.programComplete({
           email: profile?.email || user?.email,

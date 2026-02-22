@@ -7,7 +7,8 @@ import {
   BookOpen, Heart, Users, ChefHat, ArrowRight, Flame, Shield,
   Home, Calendar, UtensilsCrossed, MessageCircle, User,
   Search, Sparkles, CalendarDays, ShoppingCart, ArrowRightLeft,
-  Bell, Lock, Trophy, Share2, Smartphone, Monitor, HelpCircle
+  Bell, Lock, Trophy, Share2, Smartphone, Monitor, HelpCircle,
+  ShieldCheck, UserX, Trash2
 } from 'lucide-react'
 
 export const UserGuide = () => {
@@ -96,14 +97,15 @@ export const UserGuide = () => {
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">What's Inside</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
-                { n: '01', label: 'Getting Started' },
-                { n: '02', label: 'Your Today Page' },
-                { n: '03', label: 'Programmes & Challenges' },
-                { n: '04', label: 'Recipes & Meal Planning' },
-                { n: '05', label: 'Community Pods' },
-                { n: '06', label: 'Your Profile & Settings' },
-                { n: '07', label: 'Tips for Success' },
-                { n: '08', label: 'FAQ' },
+                { n: '01', label: 'Your Data & Privacy' },
+                { n: '02', label: 'Getting Started' },
+                { n: '03', label: 'Your Today Page' },
+                { n: '04', label: 'Programmes & Challenges' },
+                { n: '05', label: 'Recipes & Meal Planning' },
+                { n: '06', label: 'Community Pods' },
+                { n: '07', label: 'Your Profile & Settings' },
+                { n: '08', label: 'Tips for Success' },
+                { n: '09', label: 'FAQ' },
               ].map(item => (
                 <a key={item.n} href={`#section-${item.n}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                   <span className="text-sm font-bold text-temple-purple dark:text-temple-gold">{item.n}</span>
@@ -113,9 +115,48 @@ export const UserGuide = () => {
             </div>
           </div>
 
-          {/* ===== 01 GETTING STARTED ===== */}
+          {/* ===== 01 YOUR DATA & PRIVACY ===== */}
           <div id="section-01">
-            <Section number="01" title="Getting" highlight="Started">
+            <Section number="01" title="Your Data &" highlight="Privacy">
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                We believe you should always be in full control of your personal information. Temple Keepers is built on trust and transparency.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <FeatureCard icon={ShieldCheck} title="Your Data is Private">
+                  We never sell, share, or monetise your personal information. Your health, spiritual, and wellness data belongs to you alone.
+                </FeatureCard>
+                <FeatureCard icon={UserX} title="Remove Personal Details">
+                  At any time, you can clear your name, phone, location, health profile, and spiritual profile from your account — while keeping your account active.
+                </FeatureCard>
+                <FeatureCard icon={Trash2} title="Delete Your Account">
+                  You can permanently delete your account and all associated data at any time. No hoops to jump through, no waiting periods.
+                </FeatureCard>
+                <FeatureCard icon={Lock} title="No Lock-In">
+                  There are no contracts or commitments. You're free to leave whenever you choose, and we'll remove everything.
+                </FeatureCard>
+              </div>
+
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">How to Manage Your Data</h3>
+              <Step number="1" title="Go to your Profile">
+                Tap "Profile" in the bottom navigation bar.
+              </Step>
+              <Step number="2" title="Scroll to Account Management">
+                At the bottom of your Profile page, tap "Account Management" to expand the section.
+              </Step>
+              <Step number="3" title="Choose your option">
+                Select "Remove Personal Details" to clear your data but keep your account, or "Delete Account" to permanently remove everything.
+              </Step>
+
+              <TipBox>
+                Account deletion is instant and irreversible. If you just want a fresh start, try "Remove Personal Details" first — your account stays active and you can fill in your profile again whenever you like.
+              </TipBox>
+            </Section>
+          </div>
+
+          {/* ===== 02 GETTING STARTED ===== */}
+          <div id="section-02">
+            <Section number="02" title="Getting" highlight="Started">
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Temple Keepers is the first faith-based wellness platform designed for all Christians over 25. It's 100% free.
               </p>
@@ -174,9 +215,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 02 TODAY PAGE ===== */}
-          <div id="section-02">
-            <Section number="02" title="Your" highlight="Today Page">
+          {/* ===== 03 TODAY PAGE ===== */}
+          <div id="section-03">
+            <Section number="03" title="Your" highlight="Today Page">
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 The Today page is your daily wellness command centre. Every time you open Temple Keepers, this is where you'll land.
               </p>
@@ -206,9 +247,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 03 PROGRAMMES ===== */}
-          <div id="section-03">
-            <Section number="03" title="Programmes &" highlight="Challenges">
+          {/* ===== 04 PROGRAMMES ===== */}
+          <div id="section-04">
+            <Section number="04" title="Programmes &" highlight="Challenges">
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Guided multi-day journeys combining scripture, science, and practical action steps to transform your health and spiritual life.
               </p>
@@ -248,9 +289,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 04 RECIPES ===== */}
-          <div id="section-04">
-            <Section number="04" title="Recipes &" highlight="Meal Planning">
+          {/* ===== 05 RECIPES ===== */}
+          <div id="section-05">
+            <Section number="05" title="Recipes &" highlight="Meal Planning">
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Nourish your temple with faith-inspired, genuinely healthy recipes. Browse, generate with AI, and plan your meals.
               </p>
@@ -281,9 +322,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 05 COMMUNITY ===== */}
-          <div id="section-05">
-            <Section number="05" title="Community" highlight="Pods">
+          {/* ===== 06 COMMUNITY ===== */}
+          <div id="section-06">
+            <Section number="06" title="Community" highlight="Pods">
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Small groups for accountability, prayer, and encouragement. Share victories, exchange recipes, and support each other.
               </p>
@@ -313,9 +354,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 06 PROFILE ===== */}
-          <div id="section-06">
-            <Section number="06" title="Your Profile &" highlight="Settings">
+          {/* ===== 07 PROFILE ===== */}
+          <div id="section-07">
+            <Section number="07" title="Your Profile &" highlight="Settings">
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Your journey at a glance — stats, achievements, and settings.
               </p>
@@ -337,9 +378,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 07 TIPS ===== */}
-          <div id="section-07">
-            <Section number="07" title="Tips for" highlight="Success">
+          {/* ===== 08 TIPS ===== */}
+          <div id="section-08">
+            <Section number="08" title="Tips for" highlight="Success">
               <div className="space-y-3">
                 <Step number="1" title="Make it part of your morning routine">
                   Open Temple Keepers during devotional time. Read the scripture, reflect, and set your wellness intention.
@@ -363,9 +404,9 @@ export const UserGuide = () => {
             </Section>
           </div>
 
-          {/* ===== 08 FAQ ===== */}
-          <div id="section-08">
-            <Section number="08" title="Frequently Asked" highlight="Questions">
+          {/* ===== 09 FAQ ===== */}
+          <div id="section-09">
+            <Section number="09" title="Frequently Asked" highlight="Questions">
               <div className="space-y-6">
                 {[
                   { q: 'Is Temple Keepers really free?', a: 'Yes! Temple Keepers is 100% free. All programmes, recipes, community features, and AI tools are available at no cost.' },
@@ -375,6 +416,8 @@ export const UserGuide = () => {
                   { q: 'Can I do multiple programmes at once?', a: 'You can be enrolled in multiple, but we recommend focusing on one at a time for best results.' },
                   { q: 'What dietary options are available?', a: 'Daniel Fast, Vegetarian, Vegan, Pescatarian, Gluten-Free, Dairy-Free, Nut-Free, Low-Carb, Keto, Paleo, Whole-Foods, Mediterranean, and Low-Sodium.' },
                   { q: 'Is my data private?', a: 'Yes. Your data is private and secure. We never sell your information. See our Privacy Policy for full details.' },
+                  { q: 'Can I delete my account?', a: 'Yes. Go to Profile → Account Management → Delete Account. Type "DELETE" to confirm and your account and all data will be permanently removed instantly.' },
+                  { q: 'Can I remove my personal details without deleting my account?', a: 'Yes. Go to Profile → Account Management → Remove Personal Details. This clears your name, phone, location, and health/spiritual profiles while keeping your account active.' },
                   { q: 'How do I get support?', a: 'Email us at support@templekeepers.app or reach out through our social media channels.' },
                 ].map((item, i) => (
                   <div key={i}>

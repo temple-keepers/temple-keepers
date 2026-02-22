@@ -5,7 +5,7 @@ import { useRecipes } from '../hooks/useRecipes'
 import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
-import { Sparkles, Clock, Users, ChefHat, Check, BookOpen, ArrowLeft, ArrowRight, Save } from 'lucide-react'
+import { Sparkles, Clock, Users, ChefHat, Check, BookOpen, ArrowLeft, ArrowRight, Save, Eye } from 'lucide-react'
 
 export const RecipeGenerator = () => {
   const navigate = useNavigate()
@@ -20,12 +20,14 @@ export const RecipeGenerator = () => {
   const [craving, setCraving] = useState('')
   const [includeIngredients, setIncludeIngredients] = useState('')
   const [excludeIngredients, setExcludeIngredients] = useState('')
+  const [keepOriginalIngredients, setKeepOriginalIngredients] = useState(false)
 
   const [generating, setGenerating] = useState(false)
   const [generatedRecipes, setGeneratedRecipes] = useState([])
   const [activeRecipeIndex, setActiveRecipeIndex] = useState(0)
   const [savedIndexes, setSavedIndexes] = useState(new Set())
   const [savingIndex, setSavingIndex] = useState(null)
+  const [savedRecipeIds, setSavedRecipeIds] = useState({})
 
   const dietaryOptions = [
     'daniel-fast',
@@ -80,7 +82,8 @@ export const RecipeGenerator = () => {
         includeIngredients: parseIngredientList(includeIngredients),
         excludeIngredients: parseIngredientList(excludeIngredients),
         previousRecipeTitles: results.map(r => r.title),
-        craving: craving.trim()
+        craving: craving.trim(),
+        skipHealthySwaps: keepOriginalIngredients
       })
 
       if (success) {
@@ -141,6 +144,7 @@ export const RecipeGenerator = () => {
 
     if (!error && data) {
       setSavedIndexes(prev => new Set([...prev, index]))
+      setSavedRecipeIds(prev => ({ ...prev, [index]: data.id }))
       toast.success(`"${recipe.title}" saved! 🙏`)
 
       // Generate image in the background (don't block the user)
@@ -356,6 +360,40 @@ export const RecipeGenerator = () => {
                 </div>
               </div>
 
+              {/* Keep Original Ingredients Toggle */}
+              <div className="mb-4">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={keepOriginalIngredients}
+                    onClick={() => setKeepOriginalIngredients(prev => !prev)}
+                    className={`
+                      relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
+                      ${keepOriginalIngredients
+                        ? 'bg-temple-purple dark:bg-temple-gold'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                      }
+                    `}
+                  >
+                    <span
+                      className={`
+                        pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out
+                        ${keepOriginalIngredients ? 'translate-x-5' : 'translate-x-0'}
+                      `}
+                    />
+                  </button>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Keep original ingredients
+                    </span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Skip healthy swap suggestions — use ingredients as-is
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               {/* Generate Button */}
               <button
                 onClick={handleGenerate}
@@ -476,6 +514,16 @@ export const RecipeGenerator = () => {
                         </>
                       )}
                     </button>
+                    {savedRecipeIds[activeRecipeIndex] && (
+                      <button
+                        onClick={() => navigate(`/recipes/${savedRecipeIds[activeRecipeIndex]}`)}
+                        className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2
+                          bg-temple-purple dark:bg-temple-gold text-white hover:shadow-lg"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Recipe
+                      </button>
+                    )}
                   </div>
 
                   <p className="text-gray-600 dark:text-gray-400 mb-4">

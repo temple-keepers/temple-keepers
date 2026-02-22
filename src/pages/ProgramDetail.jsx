@@ -10,7 +10,6 @@ import { AppHeader } from '../components/AppHeader'
 import { BottomNav } from '../components/BottomNav'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Calendar, Clock, BookOpen, Check, Lock } from 'lucide-react'
-import { ghlService } from '../services/ghlService'
 
 export const ProgramDetail = () => {
   const { slug } = useParams()
@@ -130,15 +129,6 @@ export const ProgramDetail = () => {
     const { data, error } = await enrollInProgram(enrollmentData)
     
     if (!error && data) {
-      // Track enrollment in GHL (non-blocking)
-      ghlService.programEnrolled({
-        email: profile?.email || user?.email,
-        firstName: profile?.first_name,
-        programTitle: program.title,
-        programSlug: program.slug,
-        fastingType: fastingSelection?.fasting_type,
-      })
-
       // Navigate to Day 1
       navigate(`/programs/${program.slug}/day/1`)
     } else {

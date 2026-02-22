@@ -43,6 +43,8 @@ const AboutDenise = lazy(() => import('./pages/AboutDenise').then(m => ({ defaul
 const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })))
 const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })))
 const Cookies = lazy(() => import('./pages/Cookies').then(m => ({ default: m.Cookies })))
+const AcceptableUse = lazy(() => import('./pages/AcceptableUse').then(m => ({ default: m.AcceptableUse })))
+const Disclaimer = lazy(() => import('./pages/Disclaimer').then(m => ({ default: m.Disclaimer })))
 const UserGuide = lazy(() => import('./pages/UserGuide').then(m => ({ default: m.UserGuide })))
 const Achievements = lazy(() => import('./pages/Achievements').then(m => ({ default: m.Achievements })))
 const Shop = lazy(() => import('./pages/Shop').then(m => ({ default: m.Shop })))
@@ -50,6 +52,7 @@ const ShopProduct = lazy(() => import('./pages/ShopProduct').then(m => ({ defaul
 const ShopSuccess = lazy(() => import('./pages/ShopSuccess').then(m => ({ default: m.ShopSuccess })))
 const ShopLibrary = lazy(() => import('./pages/ShopLibrary').then(m => ({ default: m.ShopLibrary })))
 const ShopOrders = lazy(() => import('./pages/ShopOrders').then(m => ({ default: m.ShopOrders })))
+
 
 // Admin — lazy loaded as a group (only admins ever need these)
 const AdminLayout = lazy(() => import('./components/admin/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -65,7 +68,7 @@ const AdminSettings = lazy(() => import('./pages/admin/Settings').then(m => ({ d
 const AdminPods = lazy(() => import('./pages/admin/Pods').then(m => ({ default: m.AdminPods })))
 const AdminShop = lazy(() => import('./pages/admin/Shop').then(m => ({ default: m.AdminShop })))
 const AdminAnnouncements = lazy(() => import('./pages/admin/Announcements').then(m => ({ default: m.AdminAnnouncements })))
-
+const AdminMarketing = lazy(() => import('./pages/admin/Marketing').then(m => ({ default: m.AdminMarketing })))
 // ─── Page loading fallback ───────────────────────────────────────
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -104,7 +107,8 @@ const PublicRoute = ({ children }) => {
 
 const HomeRoute = ({ children }) => {
   const { user, loading } = useAuth()
-  if (!loading && user) return <Navigate to="/today" replace />
+  if (loading) return <LoadingSpinner />
+  if (user) return <Navigate to="/today" replace />
   return children
 }
 
@@ -137,6 +141,8 @@ function AppRoutes() {
       <Route path="/privacy" element={<Suspense fallback={<PageLoader />}><Privacy /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={<PageLoader />}><Terms /></Suspense>} />
       <Route path="/cookies" element={<Suspense fallback={<PageLoader />}><Cookies /></Suspense>} />
+      <Route path="/acceptable-use" element={<Suspense fallback={<PageLoader />}><AcceptableUse /></Suspense>} />
+      <Route path="/disclaimer" element={<Suspense fallback={<PageLoader />}><Disclaimer /></Suspense>} />
       <Route path="/guide" element={<Suspense fallback={<PageLoader />}><UserGuide /></Suspense>} />
 
       {/* Auth */}
@@ -204,6 +210,7 @@ function AppRoutes() {
         <Route path="shop" element={<Suspense fallback={<PageLoader />}><AdminShop /></Suspense>} />
         <Route path="announcements" element={<Suspense fallback={<PageLoader />}><AdminAnnouncements /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<PageLoader />}><AdminSettings /></Suspense>} />
+        <Route path="marketing" element={<Suspense fallback={<PageLoader />}><AdminMarketing /></Suspense>} />
       </Route>
 
       {/* Default */}

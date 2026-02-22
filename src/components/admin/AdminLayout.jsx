@@ -16,7 +16,9 @@ import {
   X,
   MessageCircle,
   ShoppingBag,
-  Megaphone
+  Megaphone,
+  ArrowLeft,
+  Palette
 } from 'lucide-react'
 
 export const AdminLayout = () => {
@@ -32,11 +34,12 @@ export const AdminLayout = () => {
     { path: '/admin/enrollments', label: 'Enrollments', icon: Calendar },
     { path: '/admin/recipes', label: 'Recipes', icon: UtensilsCrossed },
     { path: '/admin/themes', label: 'Weekly Themes', icon: Calendar },
-    { path: '/admin/users', label: 'Users', icon: Users },
+    { path: '/admin/users', label: 'CRM', icon: Users },
     { path: '/admin/pods', label: 'Community Pods', icon: MessageCircle },
     { path: '/admin/shop', label: 'Shop', icon: ShoppingBag },
     { path: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-    { path: '/admin/settings', label: 'Settings', icon: Settings }
+    { path: '/admin/settings', label: 'Settings', icon: Settings },
+    { path: '/admin/marketing', label: 'Marketing Studio', icon: Palette }
   ]
 
   const handleSignOut = async () => {
@@ -80,6 +83,19 @@ export const AdminLayout = () => {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Return to App */}
+          <div className="px-4 pt-4">
+            <button
+              onClick={() => navigate('/today')}
+              className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium
+                bg-temple-purple/10 dark:bg-temple-gold/10 text-temple-purple dark:text-temple-gold
+                hover:bg-temple-purple/20 dark:hover:bg-temple-gold/20 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Return to App
+            </button>
           </div>
 
           {/* Navigation */}
